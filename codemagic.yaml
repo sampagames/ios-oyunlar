@@ -1,0 +1,88 @@
+# Sampa Games — iOS derleme ve App Store Connect'e yükleme (Codemagic, Mac mini M2)
+# Gerekli ortam grubu: "ios_imza" (Codemagic > Teams > Global variables and secrets, hepsi "Secure"):
+#   APP_STORE_CONNECT_ISSUER_ID       App Store Connect > Users and Access > Integrations > Issuer ID
+#   APP_STORE_CONNECT_KEY_IDENTIFIER  aynı sayfadaki Key ID
+#   APP_STORE_CONNECT_PRIVATE_KEY     indirilen .p8 dosyasının tüm içeriği
+#   CERTIFICATE_PRIVATE_KEY           imza sertifikasının özel anahtarı (RSA, PEM)
+# Her oyun ayrı iş akışıdır; Codemagic'te "Start new build" > iş akışı seçilir.
+
+definitions:
+  steps: &steps
+    - name: Araçlar
+      script: |
+        brew install xcodegen
+        python3 -m pip install --quiet pillow --break-system-packages || python3 -m pip install --quiet pillow
+    - name: iOS projesini üret
+      script: |
+        python3 - <<'PY'
+        import json, os
+        d = json.load(open("oyunlar.json", encoding="utf-8"))
+        d[os.environ["GAME"]]["build"] = int(os.environ.get("BUILD_NUMBER", "1"))
+        json.dump(d, open("oyunlar.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        PY
+        python3 uret.py "$GAME"
+        cd "oyunlar/$GAME" && xcodegen generate
+    - name: İmza dosyaları
+      script: |
+        keychain initialize
+        app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+        keychain add-certificates
+        xcode-project use-profiles --project "oyunlar/$GAME/SampaGame.xcodeproj"
+    - name: IPA derle
+      script: |
+        xcode-project build-ipa \
+          --project "oyunlar/$GAME/SampaGame.xcodeproj" \
+          --scheme "SampaGame"
+  artifacts: &artifacts
+    - build/ios/ipa/*.ipa
+    - /tmp/xcodebuild_logs/*.log
+  publishing: &publishing
+    app_store_connect:
+      api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+      key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+      issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+      submit_to_testflight: false
+      submit_to_app_store: false
+
+workflows:
+  orbo:
+    name: Orbo (iOS)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      groups: [ios_imza]
+      vars:
+        GAME: orbo
+        BUNDLE_ID: com.sampagames.orbo
+    scripts: *steps
+    artifacts: *artifacts
+    publishing: *publishing
+
+  piazza:
+    name: Piazza (iOS)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      groups: [ios_imza]
+      vars:
+        GAME: piazza
+        BUNDLE_ID: com.sampagames.piazza
+    scripts: *steps
+    artifacts: *artifacts
+    publishing: *publishing
+
+  tekrenk:
+    name: Tek Renk (iOS)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      groups: [ios_imza]
+      vars:
+        GAME: tekrenk
+        BUNDLE_ID: com.sampagames.tekrenk
+    scripts: *steps
+    artifacts: *artifacts
+    publishing: *publishing

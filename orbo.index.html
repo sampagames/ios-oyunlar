@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Orbo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Orbo — Sampa Games. Tek dokunuşla çarka top fırlatma. Tam ekran tuval (mantıksal genişlik 400) + DOM katmanları. */
+:root{
+  --ink:#fff8ef; --mute:#bdb3dc; --card:#1c1533; --card2:#261d45; --line:#3b3166;
+  --acc:#ff6b5b; --sun:#ffc94a; --mint:#3ee0a7; --sky:#59c3ff;
+  --disp:'Fredoka','Arial Rounded MT Bold','Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:#140f24;color:var(--ink);font-family:var(--disp);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* menü */
+#menu{position:fixed;inset:0;display:flex;flex-direction:column;pointer-events:none}
+#menu .mtop{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));pointer-events:auto}
+#menu .grow{flex:1;min-height:150px}
+.panel{pointer-events:auto;background:linear-gradient(180deg,rgba(28,21,51,.94),#150f28);border-top:1px solid var(--line);border-radius:28px 28px 0 0;padding:20px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-shadow:0 -20px 50px rgba(0,0,0,.35)}
+.pwrap{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.logo{margin:0;text-align:center;font-weight:700;font-size:clamp(52px,16vw,72px);line-height:.9;letter-spacing:-.02em}
+.logo span{display:inline-block}
+.logo .o{color:var(--sun)}
+.tag{margin:-2px 0 2px;text-align:center;color:var(--mute);font-weight:500;font-size:15px}
+.play{border:0;border-radius:22px;padding:15px 18px 13px;font-weight:700;font-size:30px;letter-spacing:.03em;color:#2a0d08;background:linear-gradient(180deg,#ff9a85,var(--acc));box-shadow:0 6px 0 #b8392c,0 14px 30px rgba(255,107,91,.3);line-height:1}
+.play small{display:block;font-weight:600;font-size:13px;letter-spacing:.08em;margin-top:5px;opacity:.75}
+.play:active{transform:translateY(4px);box-shadow:0 2px 0 #b8392c}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode{display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--card2);border-radius:18px;padding:11px 12px;min-width:0}
+.mode i{grid-row:1/3;font-style:normal;font-size:22px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.07)}
+.mode b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mode small{font-size:12px;color:var(--mute);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mode.hot{border-color:#7a5a1a;background:linear-gradient(180deg,#3a2c14,#2a2010)}
+.mode.hot small{color:var(--sun)}
+.row{display:flex;gap:8px;align-items:center}
+.row>.btn{flex:1}
+.btn{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:11px 12px;font-weight:600;font-size:15px}
+.btn.sun{background:linear-gradient(180deg,#ffe08a,var(--sun));color:#3a2600;border-color:#ffe7a6;box-shadow:0 4px 0 #a37800}
+.btn.sun:active{transform:translateY(3px);box-shadow:0 1px 0 #a37800}
+.btn.mint{background:linear-gradient(180deg,#8ff5cf,var(--mint));color:#06301f;border-color:#b6ffe3;box-shadow:0 4px 0 #1f8f63}
+.btn:disabled{opacity:.4;cursor:default}
+.ico{width:42px;height:42px;padding:0;border-radius:13px;font-size:17px;display:grid;place-items:center;background:rgba(20,15,36,.55);border:1px solid rgba(255,255,255,.18)}
+.chip{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(20,15,36,.6);border:1px solid rgba(255,255,255,.16);font-weight:600;font-variant-numeric:tabular-nums}
+.adtag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 5px;border-radius:5px;background:rgba(0,0,0,.2);margin-right:5px;vertical-align:1px}
+
+/* oyun içi */
+#hud{position:fixed;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:8px;pointer-events:none}
+#hud>*{pointer-events:auto}
+#hudLbl{flex:1;text-align:center;font-weight:600;font-size:15px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);padding:10px 16px;border-radius:14px;background:rgba(20,15,36,.82);border:1px solid rgba(255,255,255,.16);font-weight:600;font-size:15px;text-align:center;pointer-events:none;animation:tipIn .35s cubic-bezier(.2,1.3,.4,1)}
+@keyframes tipIn{from{transform:translate(-50%,16px);opacity:0}}
+#failCard{position:fixed;left:0;right:0;bottom:0;padding:0 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;pointer-events:none}
+.fc{pointer-events:auto;width:100%;max-width:400px;background:rgba(24,17,44,.95);border:1px solid var(--line);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:center;animation:fcUp .3s cubic-bezier(.2,1.2,.4,1);box-shadow:0 20px 50px rgba(0,0,0,.4)}
+@keyframes fcUp{from{transform:translateY(40px);opacity:0}}
+.fc h2{margin:0;font-size:30px;line-height:1;font-weight:700}
+.fc p{margin:0;color:var(--mute);font-size:14px;font-weight:500}
+.fc .big{font-size:42px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.fc .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bar{height:8px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mint);border-radius:5px}
+
+/* pencereler */
+.modal{position:fixed;inset:0;background:rgba(10,7,20,.72);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;z-index:10}
+.sheet{width:100%;max-width:380px;max-height:calc(100% - 20px);overflow-y:auto;background:linear-gradient(180deg,#2a2050,#1a1432);border:1px solid #4a3d80;border-radius:26px;padding:22px 18px 18px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;text-align:center;animation:pop .25s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.86);opacity:0}}
+.mt{font-size:32px;font-weight:700;line-height:1;margin:0}
+.ms{color:var(--mute);font-weight:500;margin:-4px 0 0;font-size:14px;line-height:1.4}
+.big-ic{font-size:52px;line-height:1}
+.worlds{display:flex;flex-direction:column;gap:8px;text-align:left}
+.wd{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:rgba(0,0,0,.2);border-radius:16px;padding:9px 10px}
+.wd .sw{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:20px}
+.wd b{font-size:16px;font-weight:600}
+.wd small{display:block;color:var(--mute);font-size:12px}
+.wd .bar{margin-top:5px}
+.wd.lock{opacity:.4}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.lv{aspect-ratio:1;border-radius:13px;border:1px solid var(--line);background:rgba(0,0,0,.22);font-weight:600;font-size:17px;padding:0;position:relative}
+.lv.done{border-color:#2f8f6a;color:var(--mint)}
+.lv.cur{background:linear-gradient(180deg,#ff9a85,var(--acc));color:#2a0d08;border-color:#ffc0b4}
+.lv.lock{opacity:.3;cursor:default}
+.lv.boss::after{content:'';position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--sun)}
+.skins{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sk{border:1px solid var(--line);background:rgba(0,0,0,.2);border-radius:16px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.sk.eq{border-color:var(--mint);box-shadow:0 0 0 1px var(--mint) inset}
+.sk canvas{width:60px;height:60px}
+.sk b{font-size:13px;font-weight:600}
+.sk .btn{padding:6px 8px;font-size:12px;width:100%;box-sizing:border-box}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal div{aspect-ratio:1;border-radius:11px;background:rgba(255,255,255,.06);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--mute);border:1px solid transparent}
+.cal div.on{background:linear-gradient(180deg,#ffe08a,var(--sun));color:#3a2600}
+.cal div.today{border-color:var(--sun)}
+.mb{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mb .play{font-size:21px;padding:12px 10px 11px}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);transform:translateX(-50%);z-index:20;padding:10px 16px;border-radius:12px;background:rgba(20,15,36,.95);border:1px solid var(--line);font-weight:600;font-size:14px;max-width:calc(100% - 32px);text-align:center;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="menu">
+  <div class="mtop">
+    <div class="chip"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#ffc94a"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="#a37800" stroke-width="2"/></svg><span id="coinTxt">0</span></div>
+    <div class="row">
+      <button class="ico" id="langBtn" aria-label="Language">TR</button>
+      <button class="ico" id="vibBtn" aria-label="Vibration">📳</button>
+      <button class="ico" id="sndBtn" aria-label="Sound">🔊</button>
+    </div>
+  </div>
+  <div class="grow"></div>
+  <div class="panel">
+    <div class="pwrap">
+      <h1 class="logo" aria-label="Orbo"><span class="o">o</span><span>rb</span><span class="o">o</span></h1>
+      <p class="tag" id="tagTxt"></p>
+      <button class="play" id="playBtn"><span id="playTxt">OYNA</span><small id="playSub"></small></button>
+      <div class="modes">
+        <button class="mode" id="dailyBtn"><i>📅</i><b id="dailyTxt"></b><small id="dailySub"></small></button>
+        <button class="mode" id="endlessBtn"><i>∞</i><b id="endlessTxt"></b><small id="endlessSub"></small></button>
+      </div>
+      <div class="row"><button class="btn" id="worldsBtn"></button><button class="btn" id="skinsBtn"></button></div>
+    </div>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <button class="ico" id="backBtn" aria-label="Pause">II</button>
+  <div id="hudLbl"></div>
+  <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#ffc94a"/></svg><span id="hudCoins">0</span></div>
+</div>
+<div id="tip" hidden></div>
+<div id="failCard" hidden></div>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+<div id="toast" hidden></div>
+
+<script>
+/* Dil seçimi AdKit'ten önce yapılır; AdKit metinleri window.ADKIT_TEXT ile çevrilir. */
+(function(){
+var saved=null;try{saved=(JSON.parse(localStorage.getItem('orbo_v1'))||{}).lang}catch(e){}
+var n=(navigator.language||'en').toLowerCase().slice(0,2);
+var lang=saved||(['tr','en','es','pt','de','fr'].indexOf(n)>=0?n:'en');
+window.__ORBO_LANG=lang;
+var AT={
+ en:{tryAd:'Test ad',mockText:'In the app an ad plays here',closeNo:'Close (no reward)',claim:'Claim reward',cap:'You used today\'s ads, they reset tomorrow',dismissed:'Ad closed early, no reward',failed:'No ad available right now, try again soon',win:'Earn a reward',watch:'Watch ad',no:'No, thanks',bonus:'Bonus reward!',startsIn:'A short ad starts in',sec:'seconds. Watch it and the reward is yours.',now:'Watch now',skip:'Skip',adBreak:'Ad break',close:'Close'},
+ es:{tryAd:'Anuncio de prueba',mockText:'En la app aquí se muestra un anuncio',closeNo:'Cerrar (sin premio)',claim:'Recibir premio',cap:'Ya usaste los anuncios de hoy, mañana se renuevan',dismissed:'Cerraste el anuncio antes de tiempo, sin premio',failed:'No hay anuncios ahora, inténtalo en un rato',win:'Gana un premio',watch:'Ver anuncio',no:'No, gracias',bonus:'¡Premio extra!',startsIn:'Un anuncio corto empieza en',sec:'segundos. Si lo ves, el premio es tuyo.',now:'Ver ahora',skip:'Saltar',adBreak:'Pausa publicitaria',close:'Cerrar'},
+ pt:{tryAd:'Anúncio de teste',mockText:'No app, aqui aparece um anúncio',closeNo:'Fechar (sem prêmio)',claim:'Pegar prêmio',cap:'Você já usou os anúncios de hoje, amanhã renova',dismissed:'Você fechou o anúncio antes do fim, sem prêmio',failed:'Sem anúncios agora, tente daqui a pouco',win:'Ganhe um prêmio',watch:'Ver anúncio',no:'Não, obrigado',bonus:'Prêmio extra!',startsIn:'Um anúncio curto começa em',sec:'segundos. Se assistir, o prêmio é seu.',now:'Ver agora',skip:'Pular',adBreak:'Intervalo',close:'Fechar'},
+ de:{tryAd:'Testanzeige',mockText:'In der App läuft hier eine Anzeige',closeNo:'Schließen (keine Belohnung)',claim:'Belohnung holen',cap:'Die Anzeigen für heute sind aufgebraucht, morgen geht es weiter',dismissed:'Anzeige zu früh geschlossen, keine Belohnung',failed:'Gerade keine Anzeige verfügbar, versuch es gleich nochmal',win:'Belohnung verdienen',watch:'Anzeige ansehen',no:'Nein, danke',bonus:'Bonus!',startsIn:'Eine kurze Anzeige startet in',sec:'Sekunden. Schau sie an und die Belohnung gehört dir.',now:'Jetzt ansehen',skip:'Überspringen',adBreak:'Werbepause',close:'Schließen'},
+ fr:{tryAd:'Pub de test',mockText:'Dans l\'appli, une pub passe ici',closeNo:'Fermer (sans récompense)',claim:'Prendre la récompense',cap:'Tu as utilisé les pubs du jour, elles reviennent demain',dismissed:'Pub fermée trop tôt, pas de récompense',failed:'Pas de pub pour le moment, réessaie bientôt',win:'Gagne une récompense',watch:'Voir la pub',no:'Non, merci',bonus:'Bonus !',startsIn:'Une courte pub commence dans',sec:'secondes. Regarde-la et la récompense est à toi.',now:'Voir maintenant',skip:'Passer',adBreak:'Pause pub',close:'Fermer'},
+ tr:{}
+};
+window.ADKIT_TEXT=AT[lang]||{};
+})();
+</script>
+<script>
+/* Orbo reklam ayarı (AdKit v2): geçiş reklamı yalnızca bölüm kazanınca, oyun tarafındaki kapıdan geçerse çağrılır.
+ * Kapı açılınca sırayla bir ödüllü geçiş (Atla seçenekli, +20 altın), bir kısa normal geçiş gelir. */
+window.ADKIT_CONFIG=window.ADKIT_CONFIG||{everyLevels:2,minGapSec:0,interEvery:1,interGapSec:240,interStartSec:180,interDailyCap:8};
+</script>
+<script src="adkit.js"></script>
+<script>
+/* AdKit — oyunların ortak reklam katmanı (Sampa Games)
+ * Android'de window.AndroidAds (Java köprüsü: show(kind,id), isReady(kind)) ile gerçek AdMob reklamı gösterir,
+ * sonuç window.__adkitResult(id, 'rewarded'|'dismissed'|'failed') ile döner.
+ * Tarayıcıda köprü yoksa birkaç saniyelik deneme reklamı açar.
+ * API: AdKit.rewarded(p) · AdKit.offer({...}) · AdKit.levelDone({...}) · AdKit.left() · AdKit.available()
+ * Android'de assets/adkit.js (v2) önce yüklenir ve bu kopya devre dışı kalır.
+ */
+(function(){
+'use strict';
+if(window.AdKit)return;
+var CFG=Object.assign({everyLevels:3,minGapSec:90,dailyCap:30,introSec:5,mockSec:4},window.ADKIT_CONFIG||{});
+var TX=Object.assign({tryAd:'Deneme reklamı',mockText:'Uygulamada burada AdMob reklamı oynar',closeNo:'Kapat (ödül yok)',claim:'Ödülü al',cap:'Bugünkü reklam hakkın doldu, yarın yenilenir',dismissed:'Reklam bitmeden kapatıldı, ödül verilmedi',failed:'Şu an gösterilecek reklam yok, biraz sonra tekrar dene',win:'Ödül kazan',watch:'Reklam izle',no:'Hayır, teşekkürler',bonus:'Bonus ödül!',startsIn:'Kısa bir reklam',sec:'saniye içinde başlıyor. İzlersen ödül senin.',now:'Hemen izle',skip:'Atla'},window.ADKIT_TEXT||{});
+var KEY='adkit-v1',st={};
+try{st=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){st={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function today(){var d=new Date().toDateString();if(st.day!==d){st.day=d;st.count=0;save()}return st}
+var levels=0,lastInter=-1e9;
+var ctxs=[];
+['AudioContext','webkitAudioContext'].forEach(function(n){var O=window[n];if(!O)return;var Wr=function(){var c=new (Function.prototype.bind.apply(O,[null].concat([].slice.call(arguments))))();ctxs.push(c);return c};Wr.prototype=O.prototype;try{window[n]=Wr}catch(e){}});
+var wasRunning=[];
+function muteAll(){wasRunning=ctxs.filter(function(c){return c.state==='running'});wasRunning.forEach(function(c){try{c.suspend()}catch(e){}})}
+function unmuteAll(){wasRunning.forEach(function(c){try{c.resume()}catch(e){}});wasRunning=[]}
+var css='.adk-layer{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);background:rgba(6,8,18,.62);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1b1f2a}'+
+'.adk-card{width:100%;max-width:400px;background:#fffdf7;border-radius:22px;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:12px;text-align:center;animation:adkUp .3s cubic-bezier(.2,1.2,.4,1)}'+
+'@keyframes adkUp{from{transform:translateY(40px);opacity:0}}'+
+'.adk-card h3{margin:0;font-size:20px;font-weight:800;color:#1b1f2a}.adk-card p{margin:0;color:#5a6072}'+
+'.adk-reward{display:inline-flex;align-self:center;align-items:center;gap:8px;background:#fff1c9;color:#8a5a00;font-weight:800;padding:8px 14px;border-radius:999px}'+
+'.adk-btn{border:0;border-radius:14px;padding:14px;font:800 16px system-ui,-apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}'+
+'.adk-go{background:#2f9e6e;color:#fff;box-shadow:0 4px 0 #1f6e4c}.adk-go:active{transform:translateY(2px);box-shadow:0 2px 0 #1f6e4c}'+
+'.adk-skip{background:transparent;color:#5a6072;font-weight:700;padding:8px}'+
+'.adk-tag{font-size:11px;font-weight:900;letter-spacing:.08em;background:rgba(255,255,255,.22);padding:3px 7px;border-radius:6px;text-transform:uppercase}'+
+'.adk-bar{height:6px;border-radius:6px;background:#ece6d6;overflow:hidden}.adk-bar i{display:block;height:100%;background:#2f9e6e;width:100%;transform-origin:left}'+
+'.adk-mock{position:fixed;inset:0;z-index:2147483001;background:#0b0e1a;color:#f4f1e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font:15px system-ui,-apple-system,sans-serif}'+
+'.adk-mock b{font-size:44px}.adk-mock .adk-btn{min-width:200px}'+
+'.adk-toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:2147483002;background:#1b1f2a;color:#fff;padding:10px 16px;border-radius:12px;font:700 14px system-ui,sans-serif;max-width:calc(100% - 32px);text-align:center;pointer-events:none;transition:opacity .3s}';
+function injectCss(){if(document.getElementById('adk-css'))return;var s=document.createElement('style');s.id='adk-css';s.textContent=css;(document.head||document.documentElement).appendChild(s)}
+function el(h){injectCss();var d=document.createElement('div');d.innerHTML=h;return d.firstChild}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var toastT;
+function toast(m){var t=document.querySelector('.adk-toast');if(!t){t=el('<div class="adk-toast"></div>');document.body.appendChild(t)}t.textContent=m;t.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(function(){t.style.opacity=0},2400)}
+var PLAY='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
+var pending={},seq=0;
+window.__adkitResult=function(id,res){var f=pending[id];delete pending[id];if(f)f(res)};
+function nativeShow(kind){return new Promise(function(resolve){var id='a'+(++seq);pending[id]=resolve;try{window.AndroidAds.show(kind,id)}catch(e){delete pending[id];resolve('failed');return}setTimeout(function(){if(pending[id]){delete pending[id];resolve('failed')}},180000)})}
+function mockShow(kind){return new Promise(function(resolve){var left=CFG.mockSec,done=false;
+ var m=el('<div class="adk-mock" role="dialog" aria-label="Ad"><span class="adk-tag">'+esc(TX.tryAd)+'</span><b>'+left+'</b><p>'+esc(TX.mockText)+'</p><button class="adk-btn adk-skip" style="color:#c9cbd6">'+esc(TX.closeNo)+'</button></div>');
+ document.body.appendChild(m);var b=m.querySelector('b'),close=m.querySelector('button');
+ var finish=function(r){if(done)return;done=true;clearInterval(iv);m.remove();resolve(r)};
+ var iv=setInterval(function(){left--;b.textContent=Math.max(0,left);if(left<=0){clearInterval(iv);b.textContent='✓';close.className='adk-btn adk-go';close.textContent=TX.claim}},1000);
+ close.onclick=function(){finish(left<=0?'rewarded':'dismissed')}})}
+function hasNative(){return !!(window.AndroidAds&&window.AndroidAds.show)}
+function isReady(kind){if(!hasNative())return true;try{return !!window.AndroidAds.isReady(kind)}catch(e){return false}}
+var busy=false;
+function raw(kind){if(busy)return Promise.resolve('failed');var s=today();if(s.count>=CFG.dailyCap)return Promise.resolve('cap');if(!isReady(kind))return Promise.resolve('failed');
+ busy=true;muteAll();try{window.dispatchEvent(new CustomEvent('adkit:start'))}catch(e){}
+ return (hasNative()?nativeShow(kind):mockShow(kind)).then(function(r){busy=false;unmuteAll();try{window.dispatchEvent(new CustomEvent('adkit:end',{detail:r}))}catch(e){}if(r==='rewarded'){s.count++;save()}return r})}
+function explain(r){if(r==='cap')toast(TX.cap);else if(r==='dismissed')toast(TX.dismissed);else if(r==='failed')toast(TX.failed)}
+var AdKit={config:CFG,toast:toast,
+ left:function(){return Math.max(0,CFG.dailyCap-today().count)},
+ available:function(){return AdKit.left()>0&&isReady('rewarded')},
+ rewarded:function(p){return raw('rewarded').then(function(r){if(r!=='rewarded')explain(r);return r==='rewarded'})},
+ offer:function(o){o=o||{};return new Promise(function(resolve){
+  var layer=el('<div class="adk-layer" role="dialog"><div class="adk-card"><h3>'+esc(o.title||TX.win)+'</h3>'+(o.text?'<p>'+esc(o.text)+'</p>':'')+(o.reward?'<span class="adk-reward">'+esc(o.reward)+'</span>':'')+(o.timeout?'<div class="adk-bar"><i></i></div>':'')+'<button class="adk-btn adk-go">'+PLAY+esc(o.button||TX.watch)+'</button><button class="adk-btn adk-skip">'+esc(o.decline||TX.no)+'</button></div></div>');
+  document.body.appendChild(layer);var tm=null,closed=false;
+  var close=function(v){if(closed)return;closed=true;clearTimeout(tm);layer.remove();resolve(v)};
+  if(o.timeout){var bar=layer.querySelector('.adk-bar i');bar.style.transition='transform '+o.timeout+'s linear';requestAnimationFrame(function(){requestAnimationFrame(function(){bar.style.transform='scaleX(0)'})});tm=setTimeout(function(){close(false)},o.timeout*1000)}
+  layer.querySelector('.adk-skip').onclick=function(){close(false)};
+  layer.querySelector('.adk-go').onclick=function(){clearTimeout(tm);layer.style.display='none';AdKit.rewarded(o.placement).then(function(ok){closed=true;layer.remove();resolve(ok)})}})},
+ levelDone:function(o){o=o||{};levels++;var now=Date.now()/1000;var due=o.force||(levels>=CFG.everyLevels&&now-lastInter>=CFG.minGapSec);
+  if(!due||AdKit.left()<=0||!isReady('inter'))return Promise.resolve(false);
+  return new Promise(function(resolve){var n=CFG.introSec;
+   var layer=el('<div class="adk-layer" role="dialog"><div class="adk-card"><h3>'+esc(o.title||TX.bonus)+'</h3><span class="adk-reward">'+esc(o.reward||'Bonus')+'</span><p>'+esc(TX.startsIn)+' <b class="adk-n">'+n+'</b> '+esc(TX.sec)+'</p><div class="adk-bar"><i></i></div><button class="adk-btn adk-go">'+PLAY+esc(TX.now)+'</button><button class="adk-btn adk-skip">'+esc(TX.skip)+'</button></div></div>');
+   document.body.appendChild(layer);var bar=layer.querySelector('.adk-bar i'),num=layer.querySelector('.adk-n'),done=false;
+   bar.style.transition='transform '+n+'s linear';requestAnimationFrame(function(){requestAnimationFrame(function(){bar.style.transform='scaleX(0)'})});
+   var iv=setInterval(function(){n--;num.textContent=Math.max(0,n);if(n<=0)go()},1000);
+   function stop(){clearInterval(iv);layer.remove()}
+   function go(){if(done)return;done=true;stop();levels=0;lastInter=Date.now()/1000;raw('inter').then(function(r){if(r!=='rewarded'&&r!=='dismissed')explain(r);resolve(r==='rewarded')})}
+   layer.querySelector('.adk-go').onclick=go;
+   layer.querySelector('.adk-skip').onclick=function(){if(done)return;done=true;levels=0;stop();resolve(false)}})}};
+window.AdKit=AdKit;
+})();
+</script>
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+
+/*GEN-START*/
+const TAU=Math.PI*2;
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const RO0=150,BRAD=9,CHAP=25,NCHAP=20,MAXL=CHAP*NCHAP;
+/* Mekanikler, açıldıkları dünya sırasıyla: sabit, yön değiştiren, dalgalı hız, dur-kalk, uzayıp kısalan çubuk, hız patlaması */
+const MECH=['const','rev','wave','stop','pulse','surge'];
+/* iki top başının çakışma açısı (yarıçapa göre) */
+function thAt(ro){return 2*Math.asin(Math.min(1,(2*BRAD+1.5)/(2*ro)))}
+function angDist(a,b){let d=Math.abs(a-b)%TAU;return d>Math.PI?TAU-d:d}
+function norm(a){a%=TAU;return a<0?a+TAU:a}
+function omegaAt(m,t){const w=m.w*m.dir,x=t+(m.t0||0);
+ switch(m.type){
+  case'rev':return w*clamp(Math.cos(Math.PI*x/m.p)*3,-1,1);
+  case'wave':return w*(.25+1.05*Math.sin(TAU*x/m.p));
+  case'stop':{const s=Math.max(0,Math.sin(TAU*x/m.p));return w*1.7*Math.pow(s,1.4)}
+  case'surge':{const s=Math.max(0,Math.sin(TAU*x/m.p));return w*(.5+1.6*Math.pow(s,6))}
+  default:return w}}
+function roAt(pl,t){return pl?RO0*(1+pl.a*Math.sin(TAU*t/pl.p)):RO0}
+/* Bölüm üretici: aynı numara her zaman aynı bölümü verir.
+ * Zorluk d: dünya ile artar, dünya içinde yükselir; her 5. bölüm "patron", ardından bir nefes bölümü.
+ * Toplam top (atılacak + hazır) hıza göre sınırlanır: son toplar için bile ±40 ms'lik bir zamanlama aralığı kalır → her bölüm çözülebilir. */
+function genLevel(L,opt){opt=opt||{};
+ const r=mulberry((opt.seed!=null?opt.seed:L*7919)+13);
+ const c=Math.floor((L-1)/CHAP),i=(L-1)%CHAP+1;
+ let d=opt.d!=null?opt.d:c*.85+(i-1)/24*1.3+(i%5===0?.55:0)-(i%5===1&&i>1?.3:0);
+ d=Math.max(0,d);
+ const unl=opt.d!=null?MECH.length:Math.min(MECH.length,c+1);
+ let type='const',pulse=null,newMech=null,pick;
+ if(opt.d==null&&c>=1&&c<MECH.length&&i<=4){pick=MECH[c];if(i===1)newMech=pick}
+ else pick=MECH[unl-1-Math.floor(Math.pow(r(),1.6)*unl)];
+ if(pick==='pulse'){pulse=true;const o=MECH.slice(0,unl).filter(x=>x!=='pulse'&&x!=='surge');type=o[Math.floor(r()*o.length)]}
+ else type=pick;
+ if(!pulse&&c>=6&&r()<.28)pulse=true;
+ if(pulse)pulse={a:.1+r()*.07+Math.min(.03,d*.003),p:1.6+r()*1.1};
+ const w=clamp(1.2+.11*d+(r()-.5)*.25,1.1,3.2);
+ let p=1;
+ if(type==='rev')p=Math.max(1.2,3.1-d*.09+r()*.8);
+ else if(type==='wave')p=2.2+r()*1.6;
+ else if(type==='stop')p=1.4+r()*1.0;
+ else if(type==='surge')p=2+r()*1.2;
+ const motion={type,w,p,dir:r()<.5?-1:1,t0:r()*p};
+ let n=Math.round(5+d*.8+r()*2.5)+(i%5===0?2:0);
+ let pre=(c===0&&i<=3)?[2,3,3][i-1]:Math.round(1+r()*(2+d*.5));
+ n=clamp(n,5,26);pre=clamp(pre,0,16);
+ const roMin=RO0*(1-(pulse?pulse.a:0)),th=thAt(roMin),cap=Math.floor(TAU/th),wEff=w*({stop:.8,surge:.75}[type]||1),maxT=Math.min(Math.floor(cap*.56),Math.floor(TAU/((2*th+.08*wEff)*1.15)));
+ while(n+pre>maxT){if(pre>2)pre--;else n--}
+ const pins=[];
+ if(pre>=4&&r()<.4){const o=r()*TAU;for(let k=0;k<pre;k++)pins.push(norm(o+k*TAU/pre))}
+ else{let tries=0;while(pins.length<pre&&tries<3000){tries++;const a=r()*TAU;if(pins.every(b=>angDist(a,b)>=th*1.9))pins.push(a)}}
+ const gems=[];
+ if((L>=6&&r()<.4)||opt.gems){const ng=opt.gems||1+Math.floor(r()*2.2);let tries=0;
+  while(gems.length<ng&&tries<800){tries++;const a=r()*TAU;if(pins.every(b=>angDist(a,b)>th*1.3)&&gems.every(g=>angDist(a,g.a)>th*2.2))gems.push({a,hit:false})}}
+ return{L,c,i,d,n,pre:pins,motion,pulse,gems,newMech,boss:i%5===0,gw:th*.55}}
+/*GEN-END*/
+
+/* ================= metinler ================= */
+const TXT={
+tr:{play:'OYNA',level:'Bölüm',world:'Dünya',tag:'Tek dokunuş. Bir tur daha.',daily:'Günün Çarkı',dailyNew:'Bugün hazır!',dailyDone:'Bugün tamam ✓',streak:'{n} gün seri',
+ endless:'Sonsuz',best:'Rekor {n}',worlds:'🌍 Dünyalar',skins:'🎨 Stiller',tap:'Dokun: topu çarka fırlat',tap2:'Diğer toplara değdirme!',
+ fail:'Olmadı!',failSub:'Tekrar için ekrana dokun',retry:'Tekrar',cont:'Devam et',contSub:'son atışı geri al',skip:'Bölümü atla',menu:'Menü',
+ paused:'Durdu',resume:'Devam',worldDone:'Dünya tamamlandı!',allDone:'Hepsini bitirdin!',allDoneSub:'500 bölümün hepsi senin. Sonsuz modda rekor kır!',
+ newM:{rev:'Yeni: çark yön değiştiriyor!',wave:'Yeni: çark hızlanıp geri dönüyor!',stop:'Yeni: çark durup kalkıyor!',pulse:'Yeni: çubuklar uzayıp kısalıyor!',surge:'Yeni: çark ani hız patlamaları yapıyor!'},
+ gem:'💎 Elmasa denk getir: +3 altın',dailyWin:'Günün Çarkı tamam!',reward:'Ödül',double:'Ödülü 2 katı yap',close:'Kapat',
+ buy:'Al',use:'Kullan',using:'Kullanılıyor',watch:'İzle',noCoins:'Altının yetmiyor',bought:'Açıldı!',skinN:['Nokta','Halka','Yıldız','Kalp','Elmas','Çiçek'],
+ over:'Oyun bitti',score:'Skor',newBest:'Yeni rekor!',ring:'Tur tamam! +3',locked:'Önce {n}. bölümü geç',adTag:'Reklam',bonusT:'Bonus altın',bonusR:'+20 altın',
+ sound:'Ses',vib:'Titreşim',next:'Sonraki',again:'Yeniden',streakInfo:'Her gün çöz, serini büyüt. 7. gün büyük ödül!',playAgain:'Bir daha çöz',left:'kaldı',already:'Bugünün ödülünü aldın, yarın yeni çark!',days:['Pt','Sa','Ça','Pe','Cu','Ct','Pz']},
+en:{play:'PLAY',level:'Level',world:'World',tag:'One tap. One more round.',daily:'Daily Wheel',dailyNew:'Ready today!',dailyDone:'Done today ✓',streak:'{n}-day streak',
+ endless:'Endless',best:'Best {n}',worlds:'🌍 Worlds',skins:'🎨 Styles',tap:'Tap to shoot a dot at the wheel',tap2:'Don\'t touch the other dots!',
+ fail:'Missed!',failSub:'Tap the screen to retry',retry:'Retry',cont:'Continue',contSub:'undo the last shot',skip:'Skip level',menu:'Menu',
+ paused:'Paused',resume:'Resume',worldDone:'World complete!',allDone:'You beat them all!',allDoneSub:'All 500 levels are yours. Chase a record in Endless!',
+ newM:{rev:'New: the wheel changes direction!',wave:'New: the wheel speeds up and swings back!',stop:'New: the wheel stops and starts!',pulse:'New: the pins stretch and shrink!',surge:'New: the wheel bursts with speed!'},
+ gem:'💎 Land on a gem: +3 coins',dailyWin:'Daily Wheel done!',reward:'Reward',double:'Double the reward',close:'Close',
+ buy:'Buy',use:'Use',using:'In use',watch:'Watch',noCoins:'Not enough coins',bought:'Unlocked!',skinN:['Dot','Ring','Star','Heart','Gem','Flower'],
+ over:'Game over',score:'Score',newBest:'New best!',ring:'Round clear! +3',locked:'First beat level {n}',adTag:'Ad',bonusT:'Bonus coins',bonusR:'+20 coins',
+ sound:'Sound',vib:'Vibration',next:'Next',again:'Again',streakInfo:'Solve it every day to grow your streak. Big reward on day 7!',playAgain:'Solve again',left:'left',already:'You got today\'s reward. New wheel tomorrow!',days:['Mo','Tu','We','Th','Fr','Sa','Su']},
+es:{play:'JUGAR',level:'Nivel',world:'Mundo',tag:'Un toque. Una ronda más.',daily:'Rueda del día',dailyNew:'¡Lista hoy!',dailyDone:'Hecha hoy ✓',streak:'Racha de {n} días',
+ endless:'Infinito',best:'Récord {n}',worlds:'🌍 Mundos',skins:'🎨 Estilos',tap:'Toca para lanzar un punto a la rueda',tap2:'¡No toques los otros puntos!',
+ fail:'¡Fallaste!',failSub:'Toca la pantalla para reintentar',retry:'Reintentar',cont:'Continuar',contSub:'deshacer el último tiro',skip:'Saltar nivel',menu:'Menú',
+ paused:'Pausa',resume:'Seguir',worldDone:'¡Mundo completado!',allDone:'¡Los superaste todos!',allDoneSub:'Los 500 niveles son tuyos. ¡Busca un récord en Infinito!',
+ newM:{rev:'Nuevo: ¡la rueda cambia de sentido!',wave:'Nuevo: ¡la rueda acelera y retrocede!',stop:'Nuevo: ¡la rueda se detiene y arranca!',pulse:'Nuevo: ¡las varillas se estiran y encogen!',surge:'Nuevo: ¡la rueda tiene acelerones!'},
+ gem:'💎 Cae en una gema: +3 monedas',dailyWin:'¡Rueda del día lista!',reward:'Premio',double:'Duplicar el premio',close:'Cerrar',
+ buy:'Comprar',use:'Usar',using:'En uso',watch:'Ver',noCoins:'Te faltan monedas',bought:'¡Desbloqueado!',skinN:['Punto','Anillo','Estrella','Corazón','Gema','Flor'],
+ over:'Fin del juego',score:'Puntos',newBest:'¡Nuevo récord!',ring:'¡Vuelta completa! +3',locked:'Primero supera el nivel {n}',adTag:'Anuncio',bonusT:'Monedas extra',bonusR:'+20 monedas',
+ sound:'Sonido',vib:'Vibración',next:'Siguiente',again:'Otra vez',streakInfo:'Resuélvela cada día y sube tu racha. ¡Gran premio el día 7!',playAgain:'Resolver otra vez',left:'quedan',already:'Ya tienes el premio de hoy. ¡Mañana, rueda nueva!',days:['Lu','Ma','Mi','Ju','Vi','Sá','Do']},
+pt:{play:'JOGAR',level:'Fase',world:'Mundo',tag:'Um toque. Mais uma rodada.',daily:'Roda do dia',dailyNew:'Pronta hoje!',dailyDone:'Feita hoje ✓',streak:'Sequência de {n} dias',
+ endless:'Infinito',best:'Recorde {n}',worlds:'🌍 Mundos',skins:'🎨 Estilos',tap:'Toque para lançar um ponto na roda',tap2:'Não encoste nos outros pontos!',
+ fail:'Errou!',failSub:'Toque na tela para tentar de novo',retry:'De novo',cont:'Continuar',contSub:'desfazer o último lance',skip:'Pular fase',menu:'Menu',
+ paused:'Pausa',resume:'Continuar',worldDone:'Mundo concluído!',allDone:'Você venceu todas!',allDoneSub:'As 500 fases são suas. Busque um recorde no Infinito!',
+ newM:{rev:'Novo: a roda muda de direção!',wave:'Novo: a roda acelera e volta!',stop:'Novo: a roda para e arranca!',pulse:'Novo: as hastes esticam e encolhem!',surge:'Novo: a roda dá arrancadas!'},
+ gem:'💎 Acerte uma gema: +3 moedas',dailyWin:'Roda do dia feita!',reward:'Prêmio',double:'Dobrar o prêmio',close:'Fechar',
+ buy:'Comprar',use:'Usar',using:'Em uso',watch:'Ver',noCoins:'Faltam moedas',bought:'Desbloqueado!',skinN:['Ponto','Anel','Estrela','Coração','Gema','Flor'],
+ over:'Fim de jogo',score:'Pontos',newBest:'Novo recorde!',ring:'Volta completa! +3',locked:'Primeiro passe a fase {n}',adTag:'Anúncio',bonusT:'Moedas extras',bonusR:'+20 moedas',
+ sound:'Som',vib:'Vibração',next:'Próxima',again:'De novo',streakInfo:'Resolva todo dia e aumente sua sequência. Grande prêmio no dia 7!',playAgain:'Resolver de novo',left:'faltam',already:'Você já pegou o prêmio de hoje. Amanhã tem roda nova!',days:['Se','Te','Qu','Qu','Se','Sá','Do']},
+de:{play:'SPIELEN',level:'Level',world:'Welt',tag:'Ein Tipp. Noch eine Runde.',daily:'Rad des Tages',dailyNew:'Heute bereit!',dailyDone:'Heute geschafft ✓',streak:'{n} Tage in Folge',
+ endless:'Endlos',best:'Rekord {n}',worlds:'🌍 Welten',skins:'🎨 Stile',tap:'Tippe, um einen Punkt aufs Rad zu schießen',tap2:'Berühre die anderen Punkte nicht!',
+ fail:'Daneben!',failSub:'Tippe zum Wiederholen',retry:'Nochmal',cont:'Weiter',contSub:'letzten Schuss zurücknehmen',skip:'Level überspringen',menu:'Menü',
+ paused:'Pause',resume:'Weiter',worldDone:'Welt geschafft!',allDone:'Alles geschafft!',allDoneSub:'Alle 500 Level gehören dir. Jag einen Rekord im Endlos-Modus!',
+ newM:{rev:'Neu: das Rad wechselt die Richtung!',wave:'Neu: das Rad beschleunigt und schwingt zurück!',stop:'Neu: das Rad hält an und startet!',pulse:'Neu: die Stäbe werden länger und kürzer!',surge:'Neu: das Rad macht Temposchübe!'},
+ gem:'💎 Triff einen Edelstein: +3 Münzen',dailyWin:'Rad des Tages geschafft!',reward:'Belohnung',double:'Belohnung verdoppeln',close:'Schließen',
+ buy:'Kaufen',use:'Nutzen',using:'Aktiv',watch:'Ansehen',noCoins:'Zu wenig Münzen',bought:'Freigeschaltet!',skinN:['Punkt','Ring','Stern','Herz','Juwel','Blume'],
+ over:'Spiel vorbei',score:'Punkte',newBest:'Neuer Rekord!',ring:'Runde geschafft! +3',locked:'Schaffe zuerst Level {n}',adTag:'Werbung',bonusT:'Bonusmünzen',bonusR:'+20 Münzen',
+ sound:'Ton',vib:'Vibration',next:'Weiter',again:'Nochmal',streakInfo:'Löse es jeden Tag für deine Serie. Große Belohnung an Tag 7!',playAgain:'Nochmal lösen',left:'übrig',already:'Die heutige Belohnung hast du. Morgen gibt es ein neues Rad!',days:['Mo','Di','Mi','Do','Fr','Sa','So']},
+fr:{play:'JOUER',level:'Niveau',world:'Monde',tag:'Une touche. Encore un tour.',daily:'Roue du jour',dailyNew:'Prête aujourd\'hui !',dailyDone:'Faite aujourd\'hui ✓',streak:'Série de {n} jours',
+ endless:'Infini',best:'Record {n}',worlds:'🌍 Mondes',skins:'🎨 Styles',tap:'Touche pour lancer un point sur la roue',tap2:'Ne touche pas les autres points !',
+ fail:'Raté !',failSub:'Touche l\'écran pour réessayer',retry:'Réessayer',cont:'Continuer',contSub:'annuler le dernier tir',skip:'Passer le niveau',menu:'Menu',
+ paused:'Pause',resume:'Reprendre',worldDone:'Monde terminé !',allDone:'Tu les as tous battus !',allDoneSub:'Les 500 niveaux sont à toi. Vise un record en mode Infini !',
+ newM:{rev:'Nouveau : la roue change de sens !',wave:'Nouveau : la roue accélère et recule !',stop:'Nouveau : la roue s\'arrête et repart !',pulse:'Nouveau : les tiges s\'allongent et rétrécissent !',surge:'Nouveau : la roue a des pointes de vitesse !'},
+ gem:'💎 Vise un joyau : +3 pièces',dailyWin:'Roue du jour réussie !',reward:'Récompense',double:'Doubler la récompense',close:'Fermer',
+ buy:'Acheter',use:'Utiliser',using:'Utilisé',watch:'Voir',noCoins:'Pas assez de pièces',bought:'Débloqué !',skinN:['Point','Anneau','Étoile','Cœur','Joyau','Fleur'],
+ over:'Partie finie',score:'Score',newBest:'Nouveau record !',ring:'Tour complet ! +3',locked:'Termine d\'abord le niveau {n}',adTag:'Pub',bonusT:'Pièces bonus',bonusR:'+20 pièces',
+ sound:'Son',vib:'Vibration',next:'Suivant',again:'Encore',streakInfo:'Résous-la chaque jour pour allonger ta série. Grosse récompense au 7e jour !',playAgain:'Résoudre encore',left:'restants',already:'Tu as la récompense du jour. Nouvelle roue demain !',days:['Lu','Ma','Me','Je','Ve','Sa','Di']}};
+const LANGS=['tr','en','es','pt','de','fr'];
+const fmt=(s,n)=>String(s).replace('{n}',n);
+
+/* ================= kayıt ================= */
+const SKEY='orbo_v1';
+let S;try{S=JSON.parse(localStorage.getItem(SKEY))}catch(e){S=null}
+if(!S||S.v!==1)S={v:1,max:1,coins:0,skin:0,owned:[0],snd:true,vib:true,lang:window.__ORBO_LANG||'en',best:0,daily:{last:'',streak:0,hist:[]},fails:{},adSkin:0,plays:0};
+S.daily=S.daily||{last:'',streak:0,hist:[]};S.fails=S.fails||{};
+function save(){try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
+let T=TXT[S.lang]||TXT.en;
+
+/* ================= palet ================= */
+const PALS=[
+ {bg:['#fff1e4','#ffd2bd'],pin:'#2b2140',hub:'#2b2140',hubT:'#fff1e4',num:'#fff1e4',acc:'#ff6b5b',orb:'rgba(43,33,64,.1)'},
+ {bg:['#e6fff4','#b6efd7'],pin:'#123c33',hub:'#123c33',hubT:'#e6fff4',num:'#e6fff4',acc:'#14b882',orb:'rgba(18,60,51,.1)'},
+ {bg:['#0b2545','#163b6b'],pin:'#eef4ed',hub:'#eef4ed',hubT:'#0b2545',num:'#0b2545',acc:'#ffd166',orb:'rgba(238,244,237,.1)'},
+ {bg:['#fff6c9','#ffd470'],pin:'#3a2500',hub:'#3a2500',hubT:'#fff6c9',num:'#fff6c9',acc:'#ff8a1f',orb:'rgba(58,37,0,.1)'},
+ {bg:['#2a1a4a','#4d2b7d'],pin:'#ffe8f6',hub:'#ffe8f6',hubT:'#2a1a4a',num:'#2a1a4a',acc:'#ff8fd1',orb:'rgba(255,232,246,.1)'},
+ {bg:['#0f2a1f','#1e4d37'],pin:'#e8ffe9',hub:'#e8ffe9',hubT:'#0f2a1f',num:'#0f2a1f',acc:'#a6ff7a',orb:'rgba(232,255,233,.1)'},
+ {bg:['#fff0f2','#ffcdd6'],pin:'#4a0f22',hub:'#4a0f22',hubT:'#fff0f2',num:'#fff0f2',acc:'#ff4f7b',orb:'rgba(74,15,34,.1)'},
+ {bg:['#07070f','#16163a'],pin:'#6ef9ff',hub:'#6ef9ff',hubT:'#07070f',num:'#07070f',acc:'#ff3df2',orb:'rgba(110,249,255,.12)',glow:true},
+ {bg:['#f4ead8','#e0cba6'],pin:'#3b2f22',hub:'#3b2f22',hubT:'#f4ead8',num:'#f4ead8',acc:'#d9663a',orb:'rgba(59,47,34,.1)'},
+ {bg:['#1c0b06','#43170a'],pin:'#ffd9a8',hub:'#ffd9a8',hubT:'#1c0b06',num:'#1c0b06',acc:'#ff7a2f',orb:'rgba(255,217,168,.12)',glow:true}];
+const DAILY_PAL={bg:['#1a1240','#3a1f6a'],pin:'#ffe08a',hub:'#ffe08a',hubT:'#1a1240',num:'#1a1240',acc:'#ffc94a',orb:'rgba(255,224,138,.14)',glow:true};
+const WICON=['☀️','🌿','🌊','🍋','🍇','🌲','🌸','⚡','🏜️','🔥','❄️','🌙','🪐','🍬','🌋','🎐','🌌','💎','🌈','👑'];
+const SKINS=[{price:0},{price:120},{price:250},{price:400},{price:600},{price:'ad'}];
+function palOf(c){const p=PALS[c%PALS.length];return p}
+
+/* ================= ses ================= */
+let AC=null,NB=null;
+function ac(){if(!S.snd||mode==='demo')return null;try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}catch(e){return null}}
+function tone(f,d,type,vol,delay,slide){const a=ac();if(!a)return;try{const o=a.createOscillator(),g=a.createGain(),t=a.currentTime+(delay||0);o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol||.1,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.03)}catch(e){}}
+function noise(d,vol,freq){const a=ac();if(!a)return;try{if(!NB){NB=a.createBuffer(1,a.sampleRate,a.sampleRate);const ch=NB.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1}
+ const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain(),t=a.currentTime;s.buffer=NB;f.type='bandpass';f.frequency.value=freq||800;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(a.destination);s.start(t);s.stop(t+d+.05)}catch(e){}}
+const PENTA=[0,2,4,7,9];
+const noteF=i=>{i=Math.min(i,16);return 392*Math.pow(2,(PENTA[i%5]+12*Math.floor(i/5))/12)};
+const SFX={shoot:()=>tone(700,.05,'triangle',.04,0,1200),
+ pin:i=>{const f=noteF(i);tone(f,.22,'sine',.16);tone(f*2,.1,'triangle',.035)},
+ crash:()=>{tone(180,.4,'sawtooth',.09,0,55);noise(.3,.25,500)},
+ win:()=>[0,2,4,5,7].forEach((k,j)=>tone(noteF(k+3),.24,'triangle',.11,j*.07)),
+ gem:()=>{tone(1568,.1,'square',.04);tone(2093,.16,'square',.04,.06)},
+ coin:()=>{tone(988,.08,'square',.04);tone(1319,.14,'square',.04,.07)},
+ ring:()=>{tone(523,.5,'sine',.1,0,1046);noise(.4,.1,2400)}};
+function vib(p){try{if(S.vib&&mode!=='demo'&&navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+
+/* ================= tuval ================= */
+const cv=$('#cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,SC=1,OX=0,LW=400,LH=800,CY=300;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.floor(W*DPR);cv.height=Math.floor(H*DPR);
+ SC=Math.min(Math.min(W,520)/LW,H/700);OX=(W-LW*SC)/2;LH=H/SC;CY=Math.max(RO0+72,Math.min(LH*.38,LH-300))}
+const QGAP=30,qY0=()=>RO0+50; // kuyruk: çark merkezine göre
+
+/* ================= oyun durumu ================= */
+let mode='demo',state='menu',LV=null,G=null,parts=[],pops=[],tipT=0,winTok=0;
+function newG(lv){return{rot:0,t:0,pins:lv.pre.map(a=>({a,pre:true,pop:0})),rem:lv.n,total:lv.n,fly:[],crash:null,winT:0,usedCont:false,
+ gems:lv.gems.map(g=>({a:g.a,hit:false})),m:Object.assign({},lv.motion),pulse:lv.pulse,boost:0,hubPop:0,qOff:0,red:0,shake:0,ring:0,score:0,shots:0,botT:.6,flash:0,gemC:0}}
+function begin(lv,md){LV=lv;mode=md;G=newG(lv);state='play';parts=[];pops=[];winTok++;
+ $('#menu').hidden=true;$('#hud').hidden=false;$('#failCard').hidden=true;closeSheet();
+ updHud();
+ let tip='';
+ if(md==='level'){if(lv.L===1)tip=T.tap;else if(lv.L===2)tip=T.tap2;else if(lv.newMech)tip=T.newM[lv.newMech];else if(lv.gems.length&&!S.gemSeen){tip=T.gem;S.gemSeen=1;save()}}
+ showTip(tip)}
+function showTip(t){const el=$('#tip');if(!t){el.hidden=true;return}el.textContent=t;el.hidden=false;tipT=t===T.tap?999:3.2}
+function updHud(){$('#hudCoins').textContent=S.coins;$('#hudLbl').style.color=pal().pin;
+ if(mode==='level')$('#hudLbl').textContent=`${WICON[LV.c]} ${T.world} ${LV.c+1} · ${LV.i}/${CHAP}`;
+ else if(mode==='daily')$('#hudLbl').textContent='📅 '+T.daily;
+ else if(mode==='endless')$('#hudLbl').textContent='∞ '+T.endless+' · '+fmt(T.best,S.best)}
+function endlessLevel(){return{L:0,c:0,i:0,d:0,n:Infinity,pre:[],motion:{type:'const',w:1.45,p:2,dir:Math.random()<.5?-1:1,t0:0},pulse:null,gems:[],gw:thAt(RO0)*.55}}
+function dkey(d){d=d||new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function dailyLevel(){const k=dkey();let h=2166136261;for(const ch of k)h=Math.imul(h^ch.charCodeAt(0),16777619);const wd=(new Date().getDay()+6)%7;
+ const lv=genLevel(1,{seed:h>>>0,d:3.2+wd*.55+Math.min(3,S.max/60),gems:2});lv.daily=true;return lv}
+function startLevel(L){L=clamp(L,1,MAXL);begin(genLevel(L),'level')}
+function startDaily(){begin(dailyLevel(),'daily')}
+function startEndless(){begin(endlessLevel(),'endless');showTip(T.tap)}
+function demo(){const L=Math.min(S.max,MAXL),lv=genLevel(L);LV=lv;mode='demo';G=newG(lv);G.rem=Math.min(lv.n,8);state='play'}
+
+/* ================= atış ve çarpışma ================= */
+function shoot(){if(state!=='play'||!G||G.rem<=0||G.fly.length>=3)return;
+ const num=G.rem;G.rem--;G.shots++;G.fly.push({y:qY0(),num});G.qOff=QGAP;SFX.shoot();
+ if(tipT>900)tipT=.01}
+function land(f){const ro=roAt(G.pulse,G.t),th=thAt(ro),rel=norm(Math.PI/2-G.rot);
+ let hit=null;for(const p of G.pins){if(angDist(rel,p.a)<th){hit=p;break}}
+ if(hit){crash(rel,hit);return}
+ G.pins.push({a:rel,pop:1,num:f.num});G.hubPop=1;
+ const idx=mode==='endless'?G.ring:G.total-G.rem-G.fly.length-1;SFX.pin(Math.max(0,idx));vib(8);
+ for(const g of G.gems){if(!g.hit&&angDist(rel,g.a)<LV.gw){g.hit=true;G.gemC++;if(mode!=='demo'){S.coins+=3;save();updHud()}SFX.gem();
+  const wa=g.a+G.rot,x=Math.cos(wa)*ro,y=Math.sin(wa)*ro;burst(x,y,['#ffe08a','#ffffff','#7af5ff'],22,180);pops.push({t:0,x,y:y-18,txt:'+3',c:'#ffc94a'})}}
+ if(mode==='endless'){G.score++;G.ring++;G.m.w=Math.min(4.6,G.m.w+.035);
+  if(G.ring>=12)ringClear();return}
+ if(G.rem===0&&!G.fly.length)win()}
+function crash(rel,hit){if(mode==='demo'){demo();return}
+ state='crash';$('#hudLbl').style.color='#fff';G.crash={a:rel,hit,t:0,back:1+G.fly.length};G.fly=[];G.shake=10;SFX.crash();vib([40,40,90]);
+ if(mode==='level'){S.fails[LV.L]=(S.fails[LV.L]||0)+1;save()}
+ setTimeout(()=>{if(state==='crash')failCard()},520)}
+function ringClear(){const ro=roAt(G.pulse,G.t);
+ for(const p of G.pins){const wa=p.a+G.rot;burst(Math.cos(wa)*ro,Math.sin(wa)*ro,[pal().pin,pal().acc],5,220)}
+ G.pins=[];G.ring=0;G.score+=3;updHud();G.flash=.6;SFX.ring();vib(30);pops.push({t:0,x:0,y:-RO0-30,txt:T.ring,c:pal().acc});
+ const types=['const','rev','wave','stop','surge'];G.m.type=types[Math.floor(Math.random()*types.length)];G.m.dir*=-1;G.m.p=1.6+Math.random()*1.4;G.m.t0=0;G.t=0;
+ G.pulse=G.score>40&&Math.random()<.35?{a:.12,p:2}:null;
+ G.gems=Math.random()<.6?[{a:Math.random()*TAU,hit:false}]:[]}
+function win(){state='win';G.winT=0;G.boost=9*(G.m.dir||1);SFX.win();vib([20,30,20,30,60]);
+ const tok=++winTok;burst(0,0,[pal().acc,pal().pin,'#ffc94a'],70,320);
+ if(mode==='demo'){setTimeout(()=>{if(tok===winTok&&mode==='demo')demo()},1300);return}
+ if(mode==='level'){const L=LV.L,first=L>=S.max;let c=first?5:1;S.coins+=c;
+  pops.push({t:0,x:0,y:-RO0-34,txt:'+'+(c+G.gemC)+' 🪙',c:pal().acc});
+  if(L>=S.max&&L<MAXL)S.max=L+1;else if(L===MAXL)S.max=MAXL;S.plays++;delete S.fails[L];save();updHud();
+  setTimeout(()=>{if(tok!==winTok||mode!=='level')return;
+   if(L===MAXL)allDoneSheet();else if(LV.i===CHAP)worldSheet(LV.c);else adBreak(()=>startLevel(L+1))},1050)}
+ else if(mode==='daily'){setTimeout(()=>{if(tok===winTok)dailyWin()},900)}}
+/* Geçiş reklamı kapısı: ilk 10 bölüm yok, oturumun ilk 3 dk yok, en az 4 kazanılan bölüm ve
+ * herhangi bir reklamdan (ödüllü dahil) en az 4 dk sonra, günde en fazla 8. Kayıptan sonra hiç çağrılmaz. */
+const AD_T0=Date.now();let adWins=0,adLast=0;
+addEventListener('adkit:end',()=>{adLast=Date.now();adWins=0});
+function interGate(){adWins++;const now=Date.now(),d=dkey();if(!S.ad||S.ad.d!==d)S.ad={d,n:0};
+ if(LV.L&&LV.L<=10)return false;if(now-AD_T0<180e3||now-adLast<240e3||adWins<4||S.ad.n>=8)return false;
+ S.ad.n++;save();adWins=0;return true}
+function adBreak(fn){if(window.AdKit&&window.AdKit.levelDone&&interGate()){window.AdKit.levelDone({title:T.bonusT,reward:T.bonusR}).then(ok=>{if(ok){S.coins+=20;save();SFX.coin();toastMsg(T.bonusR)}fn()},fn)}else fn()}
+function undoCrash(){if(!G||!G.crash)return;G.rem+=G.crash.back;G.crash=null;G.red=0;state='play';updHud();$('#failCard').hidden=true;toastMsg('↩︎')}
+
+/* ================= kartlar ================= */
+function failCard(){const fc=$('#failCard');let h='';
+ const prog=mode==='endless'?1:(G.total-G.rem-G.crash.back)/G.total;
+ const canCont=!G.usedCont&&window.AdKit&&window.AdKit.available()&&(mode==='endless'?G.score>=10:prog>=.5);
+ const ad=`<span class="adtag">${T.adTag}</span>`;
+ if(mode==='endless'){const nb=G.score>S.best;
+  h=`<p>${T.score}</p><div class="big">${G.score}</div><p>${nb?'🏆 '+T.newBest:fmt(T.best,S.best)}</p>`}
+ else{const n=G.total-G.rem-G.crash.back;
+  h=`<h2>${T.fail}</h2><div class="bar"><i style="width:${Math.round(prog*100)}%"></i></div><p>${n} / ${G.total} · ${T.failSub}</p>`}
+ let btns=`<div class="g2"><button class="btn" id="fMenu">${T.menu}</button><button class="btn mint" id="fRetry">${T.retry}</button></div>`;
+ if(canCont)btns=`<button class="btn sun" id="fCont">${ad}▶ ${T.cont} · ${T.contSub}</button>`+btns;
+ if(mode==='level'&&(S.fails[LV.L]||0)>=4&&LV.L<MAXL)btns+=`<button class="btn" id="fSkip">${ad}⏭ ${T.skip}</button>`;
+ fc.innerHTML=`<div class="fc">${h}${btns}</div>`;fc.hidden=false;
+ $('#fRetry').onclick=retry;$('#fMenu').onclick=()=>{endEndless();toMenu()};
+ if($('#fCont'))$('#fCont').onclick=()=>{G.usedCont=true;window.AdKit.rewarded('continue').then(ok=>{if(ok)undoCrash();else failCard()})};
+ if($('#fSkip'))$('#fSkip').onclick=()=>window.AdKit.rewarded('skip').then(ok=>{if(ok){const L=LV.L;if(L>=S.max)S.max=L+1;delete S.fails[L];save();startLevel(L+1)}})}
+function endEndless(){if(mode==='endless'&&G&&G.score>S.best){S.best=G.score;save()}
+ if(mode==='endless'&&G&&!G.paid){G.paid=true;const c=Math.floor(G.score/5);if(c){S.coins+=c;save()}}}
+function retry(){if(state!=='crash')return;
+ if(mode==='endless'){endEndless();startEndless();return}
+ mode==='level'?startLevel(LV.L):startDaily()}
+
+/* ================= pencereler ================= */
+function sheet(h){$('#sheet').innerHTML=h;$('#modal').hidden=false}
+function closeSheet(){$('#modal').hidden=true;$('#sheet').innerHTML=''}
+let toastTm=0;function toastMsg(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastTm);toastTm=setTimeout(()=>t.hidden=true,1700)}
+function worldSheet(c){state='wait';
+ sheet(`<div class="big-ic">${WICON[c]}</div><p class="mt">${T.worldDone}</p><p class="ms">${T.world} ${c+1} · 25/25</p>
+ <div class="mb"><button class="btn" id="wMenu">${T.menu}</button><button class="play" id="wNext">${T.next}</button></div>`);
+ $('#wMenu').onclick=()=>{closeSheet();toMenu()};$('#wNext').onclick=()=>{closeSheet();adBreak(()=>startLevel(LV.L+1))}}
+function allDoneSheet(){state='wait';
+ sheet(`<div class="big-ic">👑</div><p class="mt">${T.allDone}</p><p class="ms">${T.allDoneSub}</p>
+ <div class="mb"><button class="btn" id="aMenu">${T.menu}</button><button class="play" id="aEnd">∞</button></div>`);
+ $('#aMenu').onclick=()=>{closeSheet();toMenu()};$('#aEnd').onclick=()=>{closeSheet();startEndless()}}
+function streakCal(){const days=[];const now=new Date();const wd=(now.getDay()+6)%7;
+ for(let k=0;k<7;k++){const d=new Date(now);d.setDate(now.getDate()-wd+k);const key=dkey(d);days.push(`<div class="${S.daily.hist.includes(key)?'on':''} ${k===wd?'today':''}">${T.days[k]}</div>`)}
+ return`<div class="cal">${days.join('')}</div>`}
+function dailyReward(){const s=S.daily.streak;return 20+Math.min(s,7)*5+(s>0&&s%7===0?50:0)}
+function dailyWin(){state='wait';const k=dkey(),first=S.daily.last!==k;let rw=0;
+ if(first){const y=new Date();y.setDate(y.getDate()-1);S.daily.streak=S.daily.last===dkey(y)?S.daily.streak+1:1;S.daily.last=k;
+  S.daily.hist=(S.daily.hist||[]).concat(k).slice(-14);rw=dailyReward();S.coins+=rw;save();updHud()}
+ const canDbl=first&&window.AdKit&&window.AdKit.available();
+ sheet(`<div class="big-ic">🔥</div><p class="mt">${T.dailyWin}</p><p class="ms">${fmt(T.streak,S.daily.streak)}</p>${streakCal()}
+ ${first?`<p class="ms" style="margin:0;color:var(--sun);font-size:18px;font-weight:600">${T.reward}: +${rw} 🪙</p>`:`<p class="ms">${T.already}</p>`}
+ ${canDbl?`<button class="btn sun" id="dDbl"><span class="adtag">${T.adTag}</span>▶ ${T.double}</button>`:''}
+ <div class="mb"><button class="btn" id="dMenu">${T.menu}</button><button class="play" id="dPlay">${T.play}</button></div>`);
+ if($('#dDbl'))$('#dDbl').onclick=()=>window.AdKit.rewarded('daily2x').then(ok=>{if(ok){S.coins+=rw;save();SFX.coin();toastMsg('+'+rw+' 🪙');$('#dDbl').remove()}});
+ $('#dMenu').onclick=()=>{closeSheet();toMenu()};$('#dPlay').onclick=()=>{closeSheet();startLevel(S.max)}}
+function dailyInfo(){const done=S.daily.last===dkey();
+ sheet(`<div class="big-ic">📅</div><p class="mt">${T.daily}</p><p class="ms">${T.streakInfo}</p>${streakCal()}
+ <p class="ms" style="margin:0">${fmt(T.streak,curStreak())} · ${done?T.dailyDone:T.reward+': +'+(20+Math.min(curStreak()+1,7)*5)+' 🪙'}</p>
+ <div class="mb"><button class="btn" id="diClose">${T.close}</button><button class="play" id="diGo">${done?T.playAgain:T.play}</button></div>`);
+ $('#diClose').onclick=closeSheet;$('#diGo').onclick=()=>{closeSheet();startDaily()}}
+function curStreak(){const y=new Date();y.setDate(y.getDate()-1);return S.daily.last===dkey()||S.daily.last===dkey(y)?S.daily.streak:0}
+function openPause(){if(!G||mode==='demo'||(state!=='play'))return;state='pause';
+ sheet(`<p class="mt">${T.paused}</p><p class="ms">${$('#hudLbl').textContent}</p><div class="mb"><button class="btn" id="pMenu">${T.menu}</button><button class="play" id="pGo">${T.resume}</button></div>`);
+ $('#pGo').onclick=()=>{closeSheet();state='play'};$('#pMenu').onclick=()=>{closeSheet();endEndless();toMenu()}}
+$('#backBtn').onclick=()=>{if(state==='play')openPause();else if(state==='crash'){endEndless();toMenu()}};
+function openWorlds(){const top=Math.floor((Math.min(S.max,MAXL)-1)/CHAP);let h='';
+ for(let c=0;c<NCHAP;c++){const from=c*CHAP+1,lock=from>S.max,done=clamp(S.max-from,0,CHAP),p=PALS[c%PALS.length];
+  h+=`<button class="wd ${lock?'lock':''}" data-w="${c}"><span class="sw" style="background:linear-gradient(135deg,${p.bg[0]},${p.bg[1]});box-shadow:inset 0 0 0 2px ${p.pin}33">${WICON[c]}</span>
+  <span><b>${T.world} ${c+1}</b><small>${T.level} ${from}–${from+CHAP-1}</small><span class="bar" style="display:block"><i style="width:${done/CHAP*100}%"></i></span></span><span class="ms" style="margin:0">${lock?'🔒':done+'/25'}</span></button>`}
+ sheet(`<p class="mt">${T.worlds.replace('🌍 ','')}</p><div class="worlds">${h}</div><button class="btn" id="wsClose">${T.close}</button>`);
+ $('#wsClose').onclick=closeSheet;
+ document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const c=+b.dataset.w;if(c*CHAP+1>S.max){toastMsg(fmt(T.locked,c*CHAP));return}openGrid(c)});
+ const cur=document.querySelector(`[data-w="${top}"]`);if(cur)cur.scrollIntoView({block:'center'})}
+function openGrid(c){let h='';const cur=Math.min(S.max,MAXL);
+ for(let L=c*CHAP+1;L<=(c+1)*CHAP;L++){const cls=['lv',L<S.max?'done':'',L===cur?'cur':'',L>S.max?'lock':'',(L-c*CHAP)%5===0?'boss':''].join(' ');
+  h+=`<button class="${cls}" data-l="${L}" aria-label="${T.level} ${L}">${L}</button>`}
+ sheet(`<div class="big-ic" style="font-size:40px">${WICON[c]}</div><p class="mt">${T.world} ${c+1}</p><div class="grid">${h}</div><div class="mb"><button class="btn" id="gBack">‹ ${T.worlds.replace('🌍 ','')}</button><button class="btn" id="gClose">${T.close}</button></div>`);
+ $('#gBack').onclick=openWorlds;$('#gClose').onclick=closeSheet;
+ document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{const L=+b.dataset.l;if(L>S.max){toastMsg(fmt(T.locked,L-1));return}startLevel(L)})}
+function openSkins(){const rows=SKINS.map((s,i)=>{const own=S.owned.includes(i),eq=S.skin===i;let b;
+  if(eq)b=`<button class="btn" disabled>${T.using}</button>`;else if(own)b=`<button class="btn" data-use="${i}">${T.use}</button>`;
+  else if(s.price==='ad')b=`<button class="btn sun" data-ad="${i}"><span class="adtag">${T.adTag}</span>${S.adSkin}/3</button>`;
+  else b=`<button class="btn sun" data-buy="${i}">🪙 ${s.price}</button>`;
+  return`<div class="sk ${eq?'eq':''}"><canvas width="120" height="120" data-c="${i}"></canvas><b>${T.skinN[i]}</b>${b}</div>`}).join('');
+ sheet(`<p class="mt">${T.skins.replace('🎨 ','')}</p><p class="ms">🪙 ${S.coins}</p><div class="skins">${rows}</div><button class="btn" id="skClose">${T.close}</button>`);
+ const p=palOf(Math.floor((Math.min(S.max,MAXL)-1)/CHAP));
+ document.querySelectorAll('[data-c]').forEach(cn=>{const c=cn.getContext('2d');const g=c.createLinearGradient(0,0,120,120);g.addColorStop(0,p.bg[0]);g.addColorStop(1,p.bg[1]);c.fillStyle=g;rr(c,0,0,120,120,22);c.fill();
+  c.strokeStyle=p.pin;c.lineWidth=4;c.beginPath();c.moveTo(60,112);c.lineTo(60,64);c.stroke();headPath(c,60,52,20,+cn.dataset.c,-Math.PI/2);c.fillStyle=p.pin;c.fill('evenodd')});
+ $('#skClose').onclick=()=>{closeSheet();renderMenu()};
+ document.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>{S.skin=+b.dataset.use;save();openSkins()});
+ document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const i=+b.dataset.buy;if(S.coins<SKINS[i].price){toastMsg(T.noCoins);return}S.coins-=SKINS[i].price;S.owned.push(i);S.skin=i;save();SFX.coin();toastMsg(T.bought);openSkins()});
+ document.querySelectorAll('[data-ad]').forEach(b=>b.onclick=()=>{const i=+b.dataset.ad;window.AdKit.rewarded('skin').then(ok=>{if(ok){S.adSkin++;if(S.adSkin>=3&&!S.owned.includes(i)){S.owned.push(i);S.skin=i;toastMsg(T.bought)}save()}openSkins()})})}
+
+/* ================= menü ================= */
+function toMenu(){state='menu';closeSheet();$('#failCard').hidden=true;$('#hud').hidden=true;$('#tip').hidden=true;$('#menu').hidden=false;demo();renderMenu()}
+function renderMenu(){T=TXT[S.lang]||TXT.en;document.documentElement.lang=S.lang;
+ const cur=Math.min(S.max,MAXL),c=Math.floor((cur-1)/CHAP);
+ $('#playTxt').textContent=T.play;$('#playSub').textContent=`${WICON[c]} ${T.world.toUpperCase()} ${c+1} · ${T.level.toUpperCase()} ${cur}`;$('#tagTxt').textContent=T.tag;
+ $('#coinTxt').textContent=S.coins;$('#langBtn').textContent=S.lang.toUpperCase();$('#sndBtn').textContent=S.snd?'🔊':'🔇';$('#vibBtn').style.opacity=S.vib?1:.4;
+ $('#sndBtn').setAttribute('aria-label',T.sound);$('#vibBtn').setAttribute('aria-label',T.vib);
+ const done=S.daily.last===dkey();$('#dailyTxt').textContent=T.daily;$('#dailySub').textContent=done?T.dailyDone:(curStreak()?'🔥 '+fmt(T.streak,curStreak()):T.dailyNew);$('#dailyBtn').classList.toggle('hot',!done);
+ $('#endlessTxt').textContent=T.endless;$('#endlessSub').textContent=fmt(T.best,S.best);
+ $('#worldsBtn').textContent=T.worlds;$('#skinsBtn').textContent=T.skins}
+$('#playBtn').onclick=()=>startLevel(Math.min(S.max,MAXL));
+$('#dailyBtn').onclick=dailyInfo;$('#endlessBtn').onclick=startEndless;$('#worldsBtn').onclick=openWorlds;$('#skinsBtn').onclick=openSkins;
+$('#sndBtn').onclick=()=>{S.snd=!S.snd;save();renderMenu();if(S.snd){const m=mode;mode='x';tone(660,.1,'triangle',.1);mode=m}};
+$('#vibBtn').onclick=()=>{S.vib=!S.vib;save();renderMenu();if(S.vib)try{navigator.vibrate&&navigator.vibrate(20)}catch(e){}};
+$('#langBtn').onclick=()=>{S.lang=LANGS[(LANGS.indexOf(S.lang)+1)%LANGS.length];save();renderMenu()};
+
+/* ================= girdi ================= */
+function tapAct(){if(!$('#modal').hidden)return;
+ if(state==='play'&&mode!=='demo')shoot();
+ else if(state==='crash'&&G&&G.crash&&G.crash.t>.35)retry()}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();tapAct()});
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){if(mode!=='demo'&&document.activeElement===document.body){e.preventDefault();tapAct()}}
+ else if((e.key==='Escape'||e.key==='p')&&state==='play')openPause()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&mode!=='demo')openPause()});
+addEventListener('adkit:start',()=>{if(state==='play'&&mode!=='demo')openPause()});
+
+/* ================= çizim ================= */
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function headPath(c,x,y,r,sk,a){c.beginPath();
+ switch(sk){
+  case 1:c.arc(x,y,r,0,TAU);c.moveTo(x+r*.48,y);c.arc(x,y,r*.48,0,TAU,true);break;
+  case 2:for(let k=0;k<10;k++){const rr_=k%2?r*.55:r*1.28,aa=a+k*Math.PI/5;k?c.lineTo(x+Math.cos(aa)*rr_,y+Math.sin(aa)*rr_):c.moveTo(x+Math.cos(aa)*rr_,y+Math.sin(aa)*rr_)}c.closePath();break;
+  case 3:{const s=r*1.12,ca=Math.cos(a+Math.PI/2),sa=Math.sin(a+Math.PI/2),P=(u,v)=>[x+u*ca-v*sa,y+u*sa+v*ca];
+   let p=P(0,s*.95);c.moveTo(p[0],p[1]);let q1=P(-s*1.5,-s*.05),q2=P(-s*.65,-s*1.15),q3=P(0,-s*.38);c.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q3[0],q3[1]);
+   q1=P(s*.65,-s*1.15);q2=P(s*1.5,-s*.05);q3=P(0,s*.95);c.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q3[0],q3[1]);c.closePath();break}
+  case 4:for(let k=0;k<4;k++){const aa=a+k*Math.PI/2,rr_=k%2?r*.85:r*1.3;k?c.lineTo(x+Math.cos(aa)*rr_,y+Math.sin(aa)*rr_):c.moveTo(x+Math.cos(aa)*rr_,y+Math.sin(aa)*rr_)}c.closePath();break;
+  case 5:for(let k=0;k<5;k++){const aa=a+k*TAU/5,px=x+Math.cos(aa)*r*.62,py=y+Math.sin(aa)*r*.62;c.moveTo(px+r*.52,py);c.arc(px,py,r*.52,0,TAU)}c.moveTo(x+r*.5,y);c.arc(x,y,r*.5,0,TAU);break;
+  default:c.arc(x,y,r,0,TAU)}}
+function pal(){if(!LV)return PALS[0];if(mode==='daily')return DAILY_PAL;if(mode==='endless')return PALS[Math.floor(G.score/12)%PALS.length];return palOf(LV.c)}
+function burst(x,y,cols,n,sp){for(let i=0;i<n&&parts.length<400;i++){const a=Math.random()*TAU,v=(.3+Math.random()*.7)*sp;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:0,life:.6+Math.random()*.6,s:2+Math.random()*3,c:cols[i%cols.length]})}}
+const BGD=[];for(let i=0;i<34;i++)BGD.push({x:Math.random(),y:Math.random(),r:1+Math.random()*2.4,s:.2+Math.random()*.8});
+let bgCache={k:'',g:null};
+function draw(dt){const c=ctx,p=pal(),t=performance.now()/1000;
+ c.setTransform(DPR,0,0,DPR,0,0);
+ const red=G?G.red:0;
+ const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,p.bg[0]);g.addColorStop(1,p.bg[1]);c.fillStyle=g;c.fillRect(0,0,W,H);
+ if(red>0){c.globalAlpha=red*.92;c.fillStyle='#ef3e4a';c.fillRect(0,0,W,H);c.globalAlpha=1}
+ if(G&&G.flash>0){c.globalAlpha=G.flash*.5;c.fillStyle=p.acc;c.fillRect(0,0,W,H);c.globalAlpha=1}
+ // yüzen noktalar
+ c.fillStyle=red>.5?'rgba(255,255,255,.12)':p.orb;for(const d of BGD){const y=((d.y*H-t*d.s*14)%H+H)%H;c.beginPath();c.arc(d.x*W,y,d.r*DPR/DPR,0,TAU);c.fill()}
+ if(!G)return;
+ const menu=mode==='demo',avail=LH-370-64,K=menu?clamp(avail/(RO0*2+40),.45,.95):1,cy=menu?64+avail/2:CY;
+ const sx=(Math.random()-.5)*G.shake,sy=(Math.random()-.5)*G.shake;
+ c.setTransform(DPR*SC*K,0,0,DPR*SC*K,(OX+(LW/2+sx)*SC)*DPR,(cy+sy)*SC*DPR);
+ const ro=roAt(G.pulse,G.t),rot=G.rot,pinC=red>.5?'#ffffff':p.pin;
+ // yörünge izi
+ c.strokeStyle=red>.5?'rgba(255,255,255,.15)':p.orb;c.lineWidth=1.5;c.beginPath();c.arc(0,0,ro,0,TAU);c.stroke();
+ // elmaslar
+ for(const gm of G.gems){if(gm.hit)continue;const wa=gm.a+rot,x=Math.cos(wa)*ro,y=Math.sin(wa)*ro,s=8+Math.sin(t*5+gm.a)*1.5;
+  c.save();c.translate(x,y);c.rotate(wa);c.shadowColor='#7af5ff';c.shadowBlur=14;c.fillStyle='#7af5ff';c.beginPath();c.moveTo(s,0);c.lineTo(0,s*.75);c.lineTo(-s,0);c.lineTo(0,-s*.75);c.closePath();c.fill();
+  c.shadowBlur=0;c.fillStyle='rgba(255,255,255,.7)';c.beginPath();c.moveTo(s*.4,0);c.lineTo(0,s*.3);c.lineTo(-s*.1,0);c.closePath();c.fill();c.restore()}
+ // çubuklar
+ if(p.glow&&red<.5){c.shadowColor=p.pin;c.shadowBlur=8}
+ c.strokeStyle=pinC;c.lineWidth=2;c.lineCap='round';c.beginPath();
+ for(const q of G.pins){const wa=q.a+rot;c.moveTo(0,0);c.lineTo(Math.cos(wa)*ro,Math.sin(wa)*ro)}c.stroke();
+ for(const q of G.pins){const wa=q.a+rot,x=Math.cos(wa)*ro,y=Math.sin(wa)*ro,hit=G.crash&&G.crash.hit===q;
+  headPath(c,x,y,BRAD*(1+q.pop*.4),S.skin,wa);c.fillStyle=hit?'#ffffff':pinC;c.fill('evenodd');
+  if(q.pop>0){q.pop=Math.max(0,q.pop-dt*5)}}
+ c.shadowBlur=0;
+ // çarpan top
+ if(G.crash){const y=ro,cr=G.crash;cr.t+=dt;  headPath(c,0,y,BRAD*1.15,S.skin,Math.PI/2);c.fillStyle='#ffffff';c.fill('evenodd');c.strokeStyle='#ef3e4a';c.lineWidth=2.5;c.stroke()}
+ // göbek
+ const hp=G.hubPop,hr=44*(1+hp*.08);
+ if(p.glow&&red<.5){c.shadowColor=p.hub;c.shadowBlur=24}
+ c.fillStyle=red>.5?'#ffffff':p.hub;c.beginPath();c.arc(0,0,hr,0,TAU);c.fill();c.shadowBlur=0;
+ let label=mode==='endless'?String(G.score):mode==='daily'?'★':String(LV.L);
+ c.fillStyle=red>.5?'#ef3e4a':p.hubT;c.textAlign='center';c.textBaseline='middle';
+ c.font=`700 ${label.length>=3?26:32}px Fredoka,'Arial Rounded MT Bold',sans-serif`;c.fillText(label,0,2);
+ // kuyruk
+ if(!menu){const q0=qY0(),vis=mode==='endless'?6:Math.min(G.rem,9);
+  for(let k=0;k<vis;k++){const y=q0+k*QGAP+G.qOff;if((cy+y)>LH+20)break;const a=k>=6?1-(k-5)/4:1;c.globalAlpha=a;
+   headPath(c,0,y,BRAD*1.15,S.skin,-Math.PI/2);c.fillStyle=red>.5?'#ffffff':pinC;c.fill('evenodd');
+   if(mode!=='endless'&&S.skin!==1){c.fillStyle=red>.5?'#ef3e4a':p.num;c.font=`600 ${G.rem-k>=10?10:11}px Fredoka,sans-serif`;c.fillText(String(G.rem-k),0,y+.5)}}
+  c.globalAlpha=1}
+ // uçan toplar
+ for(const f of G.fly){headPath(c,0,f.y,BRAD*1.15,S.skin,-Math.PI/2);c.fillStyle=pinC;c.fill('evenodd');c.globalAlpha=.25;c.fillRect(-1,f.y,2,24);c.globalAlpha=1}
+ // parçacıklar ve yazılar
+ for(const q of parts){c.globalAlpha=Math.max(0,1-q.t/q.life);c.fillStyle=q.c;c.beginPath();c.arc(q.x,q.y,q.s,0,TAU);c.fill()}c.globalAlpha=1;
+ for(const q of pops){const a=q.t<.12?q.t/.12:1-Math.max(0,q.t-.8)/.4;if(a<=0)continue;c.globalAlpha=a;c.font='700 20px Fredoka,sans-serif';c.lineWidth=5;c.strokeStyle='rgba(0,0,0,.35)';c.strokeText(q.txt,q.x,q.y);c.fillStyle=q.c;c.fillText(q.txt,q.x,q.y)}c.globalAlpha=1}
+
+/* ================= döngü ================= */
+function update(dt){if(!G)return;
+ if(tipT>0&&tipT<900){tipT-=dt;if(tipT<=0)$('#tip').hidden=true}
+ if(state==='play'||state==='win'){G.t+=dt;
+  let om=omegaAt(G.m,G.t);if(state==='win'){G.winT+=dt;G.boost*=Math.exp(-1.6*dt);om+=G.boost}
+  if(mode==='demo')om*=.8;
+  G.rot+=om*dt;
+  const ro=roAt(G.pulse,G.t);
+  for(const f of G.fly)f.y-=2400*dt;
+  while(state==='play'&&G.fly.length&&G.fly[0].y<=ro){const f=G.fly.shift();land(f);if(!G)return}
+  if(mode==='demo'&&state==='play'){G.botT-=dt;
+   if(G.botT<=0&&!G.fly.length){const rel=norm(Math.PI/2-G.rot),th=thAt(ro);
+    if(G.rem>0&&G.pins.every(q=>angDist(rel,q.a)>th*1.9)){shoot();G.botT=.5+Math.random()*.9}}}}
+ if(state==='crash'){G.red=Math.min(1,G.red+dt*7)}
+ G.qOff=Math.max(0,G.qOff-dt*240);G.hubPop=Math.max(0,G.hubPop-dt*5);G.shake=Math.max(0,G.shake-dt*40);G.flash=Math.max(0,G.flash-dt*2);
+ for(const q of parts){q.t+=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.97;q.vy*=.97}parts=parts.filter(q=>q.t<q.life);
+ for(const q of pops){q.t+=dt;q.y-=dt*26}pops=pops.filter(q=>q.t<1.2)}
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw(dt);requestAnimationFrame(loop)}
+addEventListener('resize',resize);resize();
+if(location.hash==='#test')window.__T={genLevel,omegaAt,roAt,thAt,angDist,get G(){return G},get S(){return S},get state(){return state},startLevel,startDaily,startEndless,toMenu,shoot};
+toMenu();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

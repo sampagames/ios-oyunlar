@@ -1,0 +1,35 @@
+{
+  "orbo": {
+    "name": "Orbo",
+    "bundle": "com.sampagames.orbo",
+    "version": "1.0.0",
+    "build": 1,
+    "background": "#140F24",
+    "admob_app": "ca-app-pub-9206732317013536~6296663574",
+    "rewarded": "ca-app-pub-9206732317013536/4213425719",
+    "rewarded_interstitial": "ca-app-pub-9206732317013536/8811146272",
+    "interstitial": "ca-app-pub-9206732317013536/2381469292"
+  },
+  "piazza": {
+    "name": "Piazza",
+    "bundle": "com.sampagames.piazza",
+    "version": "1.0.0",
+    "build": 1,
+    "background": "#FFB27A",
+    "admob_app": "ca-app-pub-9206732317013536~8755305959",
+    "rewarded": "ca-app-pub-9206732317013536/6240823255",
+    "rewarded_interstitial": "ca-app-pub-9206732317013536/4419555256",
+    "interstitial": "ca-app-pub-9206732317013536/1190756686"
+  },
+  "tekrenk": {
+    "name": "Tek Renk",
+    "bundle": "com.sampagames.tekrenk",
+    "version": "1.0.0",
+    "build": 1,
+    "background": "#0C0D22",
+    "admob_app": "ca-app-pub-9206732317013536~3558819595",
+    "rewarded": "ca-app-pub-9206732317013536/1793391911",
+    "rewarded_interstitial": "ca-app-pub-9206732317013536/4680329575",
+    "interstitial": "ca-app-pub-9206732317013536/4927741581"
+  }
+}
