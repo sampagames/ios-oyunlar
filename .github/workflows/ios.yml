@@ -1,0 +1,88 @@
+# Sampa Games — iOS derleme ve App Store Connect'e yükleme (GitHub Actions, macOS)
+# Gizli değerler (Settings > Secrets and variables > Actions > Secrets):
+#   APP_STORE_CONNECT_PRIVATE_KEY  "Sampa CI" .p8 dosyasının tüm içeriği
+#   CERTIFICATE_PRIVATE_KEY        imza sertifikasının özel anahtarı (RSA, PEM)
+# Çalıştırma: Actions > "iOS yayın" > Run workflow > oyunu seç.
+name: iOS yayın
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Oyun
+        required: true
+        type: choice
+        options: [orbo, piazza, tekrenk]
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      GAME: ${{ inputs.game }}
+      APP_STORE_CONNECT_ISSUER_ID: 07dd57ce-aeb4-4eb8-8991-bff6e691228c
+      APP_STORE_CONNECT_KEY_IDENTIFIER: 57ZTQPC3XV
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Araçlar
+        run: |
+          brew install xcodegen
+          python3 -m pip install --quiet --break-system-packages codemagic-cli-tools pillow
+          xcodebuild -version
+
+      - name: iOS projesini üret
+        run: |
+          BUILD=$((100 + GITHUB_RUN_NUMBER))
+          python3 - "$BUILD" <<'PY'
+          import json, os, sys
+          d = json.load(open("oyunlar.json", encoding="utf-8"))
+          d[os.environ["GAME"]]["build"] = int(sys.argv[1])
+          json.dump(d, open("oyunlar.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          PY
+          python3 uret.py "$GAME"
+          BUNDLE_ID=$(python3 -c "import json,os;print(json.load(open('oyunlar.json'))[os.environ['GAME']]['bundle'])")
+          APP_NAME=$(python3 -c "import json,os;print(json.load(open('oyunlar.json'))[os.environ['GAME']]['name'])")
+          echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          cd "oyunlar/$GAME" && xcodegen generate
+
+      - name: Paket kimliği (yoksa oluştur)
+        run: |
+          if app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | grep -q '"identifier"'; then
+            echo "var: $BUNDLE_ID"
+          else
+            app-store-connect bundle-ids create "$BUNDLE_ID" --name "Sampa $APP_NAME" --platform IOS
+          fi
+
+      - name: İmza dosyaları
+        run: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --platform IOS --create
+          keychain add-certificates
+          xcode-project use-profiles --project "oyunlar/$GAME/SampaGame.xcodeproj"
+
+      - name: IPA derle
+        run: |
+          xcode-project build-ipa \
+            --project "oyunlar/$GAME/SampaGame.xcodeproj" \
+            --scheme "SampaGame"
+
+      - name: App Store Connect'e yükle
+        run: app-store-connect publish --path "$(ls build/ios/ipa/*.ipa | head -1)"
+
+      - name: Kayıtlar
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.game }}-ios
+          path: |
+            build/ios/ipa/*.ipa
+            /tmp/xcodebuild_logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
