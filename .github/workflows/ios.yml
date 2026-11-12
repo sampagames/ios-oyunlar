@@ -61,6 +61,16 @@ jobs:
             app-store-connect bundle-ids create "$BUNDLE_ID" --name "Sampa $APP_NAME" --platform IOS
           fi
 
+      - name: Game Center yeteneği (Golazo)
+        if: env.GAME == 'golazo'
+        run: |
+          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['id'])")
+          echo "bundle resource: $RID"
+          app-store-connect bundle-ids enable-capabilities "$RID" --capability GAME_CENTER || echo "zaten açık olabilir"
+          for P in $(app-store-connect bundle-ids profiles "$RID" --json | python3 -c "import json,sys;[print(p['id']) for p in json.load(sys.stdin)]"); do
+            app-store-connect profiles delete "$P" || true
+          done
+
       - name: İmza dosyaları
         run: |
           keychain initialize
