@@ -81,6 +81,15 @@ def build(gid):
             f.write(f'"NSUserTrackingUsageDescription" = "{text}";\n"CFBundleDisplayName" = "{g["name"]}";\n')
 
     target = "SampaGame"
+    # Oyuna özel ek ayarlar (oyunlar.json): "flags", "entitlements", "frameworks"
+    flags = " ".join(g.get("flags", []))
+    flag_line = f"        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) {flags}\n" if flags else ""
+    deps_extra = "".join(f"      - sdk: {fw}\n" for fw in g.get("frameworks", []))
+    ent = g.get("entitlements", {})
+    ent_block = ""
+    if ent:
+        props = "".join(f"        {k}: {str(v).lower() if isinstance(v, bool) else yaml_str(v)}\n" for k, v in ent.items())
+        ent_block = f"    entitlements:\n      path: App.entitlements\n      properties:\n{props}"
     skan = "\n".join(f"          - SKAdNetworkIdentifier: {k}.skadnetwork" for k in SKAN)
     langs = "\n".join(f"          - {l}" for l in ATT)
     yml = f"""name: {target}
@@ -109,7 +118,7 @@ targets:
     dependencies:
       - package: GoogleMobileAds
       - package: GoogleUserMessagingPlatform
-    settings:
+{deps_extra}{ent_block}    settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: {g["bundle"]}
         PRODUCT_NAME: {yaml_str(target)}
@@ -121,7 +130,7 @@ targets:
         CODE_SIGN_STYLE: Manual
         ENABLE_BITCODE: NO
         OTHER_LDFLAGS: $(inherited) -ObjC
-    info:
+{flag_line}    info:
       path: Info.plist
       properties:
         CFBundleDisplayName: {yaml_str(g["name"])}

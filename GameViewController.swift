@@ -9,6 +9,10 @@ import WebKit
 final class GameViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     private var webView: WKWebView!
     private lazy var ads = AdManager(presenter: self)
+    #if GOLAZO
+    private var golazo: GolazoNative?
+    private var golazoStarted = false
+    #endif
 
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
@@ -36,6 +40,11 @@ final class GameViewController: UIViewController, WKScriptMessageHandler, WKNavi
         config.userContentController.addUserScript(
             WKUserScript(source: shim, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController.add(self, name: "ads")
+        #if GOLAZO
+        config.userContentController.addUserScript(
+            WKUserScript(source: GolazoNative.jsShim, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        for name in GolazoNative.handlerNames { config.userContentController.add(self, name: name) }
+        #endif
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -49,6 +58,9 @@ final class GameViewController: UIViewController, WKScriptMessageHandler, WKNavi
         webView.uiDelegate = self
         if #available(iOS 16.4, *) { webView.isInspectable = false }
         view.addSubview(webView)
+        #if GOLAZO
+        golazo = GolazoNative(host: self, web: webView)
+        #endif
 
         if let dir = Bundle.main.url(forResource: "web", withExtension: nil) {
             webView.loadFileURL(dir.appendingPathComponent("index.html"), allowingReadAccessTo: dir)
@@ -62,10 +74,25 @@ final class GameViewController: UIViewController, WKScriptMessageHandler, WKNavi
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         ads.startIfNeeded()
+        #if GOLAZO
+        if !golazoStarted { golazoStarted = true; golazo?.authenticate() }
+        #endif
     }
 
     // JS -> native
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        #if GOLAZO
+        if message.name != "ads" {
+            let body = message.body as? [String: Any] ?? [:]
+            switch message.name {
+            case "games": golazo?.handleGames(body)
+            case "share": golazo?.handleShare(body)
+            case "haptic": golazo?.handleHaptic(body)
+            default: break
+            }
+            return
+        }
+        #endif
         guard message.name == "ads", let body = message.body as? [String: Any],
               let kind = body["kind"] as? String, let id = body["id"] as? String else { return }
         ads.show(kind: kind) { [weak self] result in

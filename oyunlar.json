@@ -31,5 +31,25 @@
     "rewarded": "ca-app-pub-9206732317013536/1793391911",
     "rewarded_interstitial": "ca-app-pub-9206732317013536/4680329575",
     "interstitial": "ca-app-pub-9206732317013536/4927741581"
+  },
+  "golazo": {
+    "name": "Golazo",
+    "bundle": "com.sampagames.golazo",
+    "version": "1.6.1",
+    "build": 1,
+    "background": "#0A2016",
+    "admob_app": "ca-app-pub-9206732317013536~8019281071",
+    "rewarded": "ca-app-pub-9206732317013536/3748863570",
+    "rewarded_interstitial": "ca-app-pub-9206732317013536/7564644646",
+    "interstitial": "ca-app-pub-9206732317013536/3940435260",
+    "flags": [
+      "GOLAZO"
+    ],
+    "frameworks": [
+      "GameKit.framework"
+    ],
+    "entitlements": {
+      "com.apple.developer.game-center": true
+    }
   }
 }
