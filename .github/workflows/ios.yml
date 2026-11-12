@@ -64,12 +64,24 @@ jobs:
       - name: Game Center yeteneği (Golazo)
         if: env.GAME == 'golazo'
         run: |
-          RID=$(app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['id'])")
-          echo "bundle resource: $RID"
-          app-store-connect bundle-ids enable-capabilities "$RID" --capability GAME_CENTER || echo "zaten açık olabilir"
-          for P in $(app-store-connect bundle-ids profiles "$RID" --json | python3 -c "import json,sys;[print(p['id']) for p in json.load(sys.stdin)]"); do
-            app-store-connect profiles delete "$P" || true
-          done
+          mkdir -p /tmp/xcodebuild_logs
+          exec > >(tee /tmp/xcodebuild_logs/gamecenter.log) 2>&1
+          set -x
+          app-store-connect bundle-ids list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json > /tmp/bid.json || true
+          cat /tmp/bid.json
+          RID=$(python3 -c "import json;d=json.load(open('/tmp/bid.json'));print(d[0]['id'])")
+          app-store-connect bundle-ids enable-capabilities "$RID" --capability GAME_CENTER || echo "enable-capabilities hata"
+          app-store-connect profiles list --json > /tmp/profiles.json || true
+          python3 - <<'EOF' > /tmp/del.txt
+          import json
+          d=json.load(open('/tmp/profiles.json'))
+          for p in d:
+              a=p.get('attributes',{})
+              if 'golazo' in (a.get('name','')+' ').lower():
+                  print(p['id'])
+          EOF
+          cat /tmp/del.txt
+          for P in $(cat /tmp/del.txt); do app-store-connect profiles delete "$P" || echo "silinemedi $P"; done
 
       - name: İmza dosyaları
         run: |
