@@ -17,7 +17,7 @@ definitions:
         python3 - <<'PY'
         import json, os
         d = json.load(open("oyunlar.json", encoding="utf-8"))
-        d[os.environ["GAME"]]["build"] = int(os.environ.get("BUILD_NUMBER", "1"))
+        d[os.environ["GAME"]]["build"] = 100 + int(os.environ.get("BUILD_NUMBER", "1"))
         json.dump(d, open("oyunlar.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         PY
         python3 uret.py "$GAME"
@@ -83,6 +83,20 @@ workflows:
       vars:
         GAME: tekrenk
         BUNDLE_ID: com.sampagames.tekrenk
+    scripts: *steps
+    artifacts: *artifacts
+    publishing: *publishing
+
+  golazo:
+    name: Golazo (iOS)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      groups: [ios_imza]
+      vars:
+        GAME: golazo
+        BUNDLE_ID: com.sampagames.golazo
     scripts: *steps
     artifacts: *artifacts
     publishing: *publishing
