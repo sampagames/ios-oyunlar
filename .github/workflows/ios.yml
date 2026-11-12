@@ -12,7 +12,7 @@ on:
         description: Oyun
         required: true
         type: choice
-        options: [orbo, piazza, tekrenk]
+        options: [golazo, orbo, piazza, tekrenk]
 
 permissions:
   contents: read
