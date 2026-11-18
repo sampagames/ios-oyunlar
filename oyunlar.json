@@ -51,5 +51,16 @@
     "entitlements": {
       "com.apple.developer.game-center": true
     }
+  },
+  "dunya": {
+    "name": "World Order",
+    "bundle": "com.sampagames.dunya",
+    "version": "1.0.0",
+    "build": 1,
+    "background": "#0B1424",
+    "admob_app": "ca-app-pub-9206732317013536~7030955859",
+    "rewarded": "ca-app-pub-9206732317013536/1789916664",
+    "rewarded_interstitial": "ca-app-pub-9206732317013536/3913837929",
+    "interstitial": "ca-app-pub-9206732317013536/7727417863"
   }
 }
