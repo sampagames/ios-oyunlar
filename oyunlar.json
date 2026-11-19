@@ -61,6 +61,15 @@
     "admob_app": "ca-app-pub-9206732317013536~7030955859",
     "rewarded": "ca-app-pub-9206732317013536/1789916664",
     "rewarded_interstitial": "ca-app-pub-9206732317013536/3913837929",
-    "interstitial": "ca-app-pub-9206732317013536/7727417863"
+    "interstitial": "ca-app-pub-9206732317013536/7727417863",
+    "flags": [
+      "GOLAZO"
+    ],
+    "frameworks": [
+      "GameKit.framework"
+    ],
+    "entitlements": {
+      "com.apple.developer.game-center": true
+    }
   }
 }
