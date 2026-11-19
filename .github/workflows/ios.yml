@@ -61,8 +61,8 @@ jobs:
             app-store-connect bundle-ids create "$BUNDLE_ID" --name "Sampa $APP_NAME" --platform IOS
           fi
 
-      - name: Game Center yeteneği (Golazo)
-        if: env.GAME == 'golazo'
+      - name: Game Center yeteneği (Golazo, World Order)
+        if: env.GAME == 'golazo' || env.GAME == 'dunya'
         run: |
           mkdir -p /tmp/xcodebuild_logs
           exec > >(tee /tmp/xcodebuild_logs/gamecenter.log) 2>&1
@@ -73,11 +73,11 @@ jobs:
           app-store-connect bundle-ids enable-capabilities "$RID" --capability GAME_CENTER || echo "enable-capabilities hata"
           app-store-connect profiles list --json > /tmp/profiles.json || true
           python3 - <<'EOF' > /tmp/del.txt
-          import json
+          import json, os
           d=json.load(open('/tmp/profiles.json'))
           for p in d:
               a=p.get('attributes',{})
-              if 'golazo' in (a.get('name','')+' ').lower():
+              if os.environ['GAME'] in (a.get('name','')+' ').lower():
                   print(p['id'])
           EOF
           cat /tmp/del.txt
