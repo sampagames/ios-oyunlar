@@ -96,6 +96,10 @@ jobs:
             --project "oyunlar/$GAME/SampaGame.xcodeproj" \
             --scheme "SampaGame"
 
+      - name: Hata ayrıntısı
+        if: failure()
+        run: grep -h -B2 -A4 -E "error:|error \\[|Provisioning|entitlement|Signing" /tmp/xcodebuild_logs/*.log | tail -120 || true
+
       - name: App Store Connect'e yükle
         run: app-store-connect publish --path "$(ls build/ios/ipa/*.ipa | head -1)"
 
