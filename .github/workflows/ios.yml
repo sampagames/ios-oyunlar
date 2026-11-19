@@ -77,7 +77,8 @@ jobs:
           d=json.load(open('/tmp/profiles.json'))
           for p in d:
               a=p.get('attributes',{})
-              if os.environ['GAME'] in (a.get('name','')+' ').lower():
+              n=(a.get('name','')+' ').lower()
+              if os.environ['GAME'] in n or os.environ.get('APP_NAME','#').lower() in n:
                   print(p['id'])
           EOF
           cat /tmp/del.txt
